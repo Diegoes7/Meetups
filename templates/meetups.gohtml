@@ -1,0 +1,33 @@
+{{ define "meetups" }}
+<section>
+    <h2>Meetups</h2>
+    <ul>
+        {{ range .Meetups }}
+        <li>
+            {{ .Name }}  
+            <button onclick="startMeetup({{ .ID }})">Start Meetup</button>
+        </li>
+        {{ end }}
+    </ul>
+
+    <script>
+        async function fetchMeetups() {
+            const response = await fetch("/api/meetups");
+            const meetups = await response.json();
+            const list = document.getElementById("meetups-list");
+
+            meetups.forEach(meetup => {
+                let li = document.createElement("li");
+                li.innerHTML = `${meetup.name} <button onclick="startMeetup(${meetup.id})">Start Meetup</button>`;
+                list.appendChild(li);
+            });
+        }
+
+        function startMeetup(meetupId) {
+            window.location.href = "/meetup/" + meetupId;
+        }
+
+        fetchMeetups();
+    </script>
+</section>
+{{ end }}

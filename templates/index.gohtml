@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Meetup App</title>
+		<script>
+			// Fetch users and meetups and display the results
+			function fetchData() {
+				fetch('http://localhost:8080/query', {
+					// Ensure your URL is correct
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						query: `{
+                        meetups {
+                            id
+                            name
+                            description
+                        }
+                        users {
+                            id
+                            username
+                            email
+                            firstName
+	                          lastName
+                        }
+                    }`,
+					}),
+				})
+					.then((response) => {
+						if (!response.ok) {
+							throw new Error('Network response was not ok')
+						}
+						return response.json()
+					})
+					.then((data) => {
+						// Ensure data contains 'meetups' and 'users'
+						if (data.data) {
+							// Display meetups
+							let meetupsHTML = ''
+							data.data.meetups.forEach((meetup) => {
+								meetupsHTML += `<p>${meetup.name} <button onclick="goToMeetup(${meetup.id})">Go to Meetup</button></p>`
+							})
+							document.getElementById('meetups').innerHTML = meetupsHTML
+
+							// Display users
+							let usersHTML = ''
+							data.data.users.forEach((user) => {
+								usersHTML += `<p>${user.username}, ${user.email}</p>`
+							})
+							document.getElementById('users').innerHTML = usersHTML
+						} else {
+							throw new Error('Invalid response structure')
+						}
+					})
+					.catch((error) => console.error('Error:', error))
+			}
+
+			// Navigate to active meetup page
+			function goToMeetup(meetupId) {
+				window.location.href = `/meetup/${meetupId}`
+			}
+
+			// check if user is logged in
+			async function checkSession() {
+				const response = await fetch('/me')
+
+				if (response.ok) {
+					const user = await response.json()
+
+					// Check if user object is empty
+					if (Object.keys(user).length === 0) {
+						document.getElementById('loginForm').style.display = 'block'
+						document.getElementById('userInfo').style.display = 'none'
+					} else {
+						document.getElementById('loginForm').style.display = 'none'
+						document.getElementById('username').textContent = user.username
+						document.getElementById('userEmail').textContent = user.email
+						document.getElementById('firstName').textContent = user.firstName
+						document.getElementById('lastName').textContent = user.lastName
+						document.getElementById('userInfo').style.display = 'block'
+					}
+				} else {
+					// If status is not 200 (e.g., 401 or 500), show login form
+					document.getElementById('loginForm').style.display = 'block'
+					document.getElementById('userInfo').style.display = 'none'
+				}
+			}
+
+			// Call fetchData when page loads
+			// window.onload = fetchData
+			// Combine both functions to execute on page load
+			window.onload = async function () {
+				// Check if the user is logged in
+				await checkSession()
+
+				// Call your other fetch data function
+				await fetchData()
+			}
+		</script>
+	</head>
+	<body>
+		<h1>Welcome to Meetup App</h1>
+
+		<section>
+			{{ template "login" . }}
+		</section>
+
+		<section>
+			<h2>Meetups</h2>
+			<div id="meetups"></div>
+		</section>
+
+		<section>
+			<h2>Users</h2>
+			<div id="users"></div>
+		</section>
+	</body>
+</html>

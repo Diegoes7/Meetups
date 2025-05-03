@@ -1,0 +1,47 @@
+#! Time is treated as a special type that gqlgen needs to map to an actual Go type.
+#! represent timestamps
+scalar Time
+
+type AuthToken {
+	accessToken: String!
+	expiredAt: Time!
+}
+
+type AuthResponse {
+	authToken: AuthToken!
+	user: User!
+}
+
+type Query {
+	_dummy: String # Placeholder field (can be deleted later)
+}
+
+type Mutation {
+	_dummy: String # Placeholder field
+}
+
+type TimeUnix {
+	unixTime: Int!
+	timeStamp: String!
+}
+
+type Subscription {
+	"""
+	`currentTime` will return a stream of `Time` objects.
+	"""
+	currentTime: TimeUnix!
+	meetupUpdates(meetupId: ID!): MeetupUpdate!
+}
+
+type MeetupUpdate {
+	meetupId: ID!
+	started: Boolean!
+	newMessage: Message
+}
+
+type Message {
+	id: ID!
+	sender: User!
+	content: String!
+	timestamp: Time!
+}

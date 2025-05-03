@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Active Meetup</title>
+	</head>
+	<body>
+		<h1>Active Meetup: {{ .Meetup.Name }}</h1>
+
+		<button onclick="startConnection()">Start Connection</button>
+		<br />
+
+		<input type="text" id="message-input" placeholder="Type a message..." />
+		<button onclick="sendMessage()">Send</button>
+
+		<script>
+			let socket
+
+			function sendMessage() {
+				let input = document.getElementById('message-input')
+				let message = input.value
+				if (!message) return
+
+				// Send message via WebSocket if the connection is open
+				if (socket && socket.readyState === WebSocket.OPEN) {
+					socket.send(
+						JSON.stringify({
+							meetupId: '{{ .Meetup.ID }}', // Send meetup ID
+							message: message, // Send the message
+						})
+					)
+
+					let messageList = document.getElementById('message-list')
+					let li = document.createElement('li')
+					li.innerHTML = `<strong>You:</strong> ${message}`
+					messageList.appendChild(li)
+					input.value = '' // Clear input field
+				} else {
+					console.error('WebSocket is not connected.')
+				}
+			}
+
+			// function sendMessage() {
+			// 	let input = document.getElementById('message-input')
+			// 	let message = input.value
+			// 	if (!message) return
+
+			// 	fetch('/send_message', {
+			// 		method: 'POST',
+			// 		headers: { 'Content-Type': 'application/json' },
+			// 		body: JSON.stringify({ meetupId: '{{ .Meetup.ID }}', message }),
+			// 	})
+			// 		.then((response) => response.json())
+			// 		.then((data) => {
+			// 			let messageList = document.getElementById('message-list')
+			// 			let li = document.createElement('li')
+			// 			li.innerHTML = `<strong>You:</strong> ${message}`
+			// 			messageList.appendChild(li)
+			// 			input.value = ''
+			// 		})
+			// 		.catch((error) => console.error('Error sending message:', error))
+			// }
+
+			// function startConnection() {
+			// 	if (!socket || socket.readyState === WebSocket.CLOSED) {
+			// 		// Open the WebSocket connection when the button is clicked
+			// 		socket = new WebSocket(
+			// 			'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
+			// 		)
+
+			// 		// When a message is received from the server, append it to the message list
+			// 		socket.onmessage = function (event) {
+			// 			const update = JSON.parse(event.data)
+			// 			const messageList = document.getElementById('message-list')
+			// 			const li = document.createElement('li')
+			// 			li.innerHTML = `<strong>${update.newMessage.sender}:</strong> ${update.newMessage.content}`
+			// 			messageList.appendChild(li)
+			// 		}
+
+			// 		socket.onerror = function (error) {
+			// 			console.error('WebSocket Error:', error)
+			// 		}
+
+			// 		socket.onopen = function () {
+			// 			console.log('WebSocket connection established.')
+			// 		}
+
+			// 		socket.onclose = function () {
+			// 			console.log('WebSocket connection closed.')
+			// 		}
+			// 	} else {
+			// 		console.log('WebSocket connection already open.')
+			// 	}
+			// }
+			function startConnection() {
+				if (!socket || socket.readyState === WebSocket.CLOSED) {
+					// Open the WebSocket connection when the button is clicked
+					socket = new WebSocket(
+						'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
+					)
+
+					// When a message is received from the server, append it to the message list
+					socket.onmessage = function (event) {
+						const update = JSON.parse(event.data)
+						const messageList = document.getElementById('message-list')
+						const li = document.createElement('li')
+						li.innerHTML = `<strong>${update.newMessage.sender}:</strong> ${update.newMessage.content}`
+						messageList.appendChild(li)
+					}
+
+					socket.onerror = function (error) {
+						console.error('WebSocket Error:', error)
+					}
+
+					socket.onopen = function () {
+						console.log('WebSocket connection established.')
+					}
+
+					socket.onclose = function () {
+						console.log('WebSocket connection closed.')
+						// Try to reconnect if the connection is closed
+						setTimeout(() => startConnection(), 1000) // Attempt reconnection after 1 second
+					}
+				} else {
+					console.log('WebSocket connection already open.')
+				}
+			}
+		</script>
+		<h2>Messages</h2>
+		<ul id="message-list">
+			{{
+				range.Messages
+			}}
+			<li>
+				<strong>{{ .User }}:</strong> {{ .Content }}
+			</li>
+			{{
+				end
+			}}
+		</ul>
+	</body>
+</html>

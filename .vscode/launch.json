@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Go Program",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/server.go",  // Path to your main Go file (adjust if needed)
+      "env": {},
+      "args": [],
+      "showLog": true,
+      "dlvToolPath": "${GOPATH}/bin/dlv",  // Path to Delve, or leave default if it's installed globally
+      "buildFlags": ""
+    }
+  ]
+}

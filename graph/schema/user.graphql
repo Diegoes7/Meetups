@@ -1,0 +1,36 @@
+type User {
+	id: ID!
+	username: String!
+	email: String!
+	firstName: String!
+	lastName: String!
+	createdAt: Time!
+	updatedAt: Time!
+	
+  meetups: [Meetup!]!
+}
+
+input RegisterArgs {
+	username: String!
+	email: String!
+	password: String!
+	confirmPassword: String!
+	firstName: String!
+	lastName: String!
+}
+
+input LoginInput {
+	email: String!
+	password: String!
+}
+
+extend type Query {
+	user(id: ID!): User!
+  users: [User!]!
+  me: User
+}
+
+extend type Mutation {
+	register(input: RegisterArgs): AuthResponse!
+	login(input: LoginInput!): AuthResponse!
+}

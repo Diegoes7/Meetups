@@ -1,0 +1,34 @@
+type Meetup {
+	id: ID!
+	name: String!
+	description: String!
+	user: User!
+}
+
+input NewMeetup {
+	name: String!
+	description: String!
+}
+
+input UpdateMeetup {
+	name: String
+	description: String
+}
+
+input MeetupsFilter {
+	name: String
+}
+
+extend type Query {
+	meetups(filter: MeetupsFilter, limit: Int = 10, offset: Int = 0): [Meetup!]!
+}
+
+extend type Mutation {
+	createMeetup(input: NewMeetup!): Meetup!
+	updateMeetup(id: ID!, input: UpdateMeetup!): Meetup!
+	deleteMeetup(id: ID!): Boolean!
+
+  #! New mutation to start a meetup
+   startMeetup(meetupID: ID!): Boolean!
+}
+

@@ -3,21 +3,80 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<style>
+			.meetup_layout {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 auto;
+				justify-content: space-between;
+				font-family: Arial, sans-serif;
+				margin: 1em;
+				border: 0.1em solid #ccc;
+				border-radius: 0.5em;
+				padding: 0 0.5em 1em 1.5em;
+			}
+			.nav {
+				display: flex;
+				gap: 1em;
+			  margin: 1em 1em 1em 0;
+			  align-items: center
+				margin: 1em;
+			}
+			button {
+				padding: 0.5em 1em;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 0.3em;
+				cursor: pointer;
+				margin-top: 1em;
+			}
+			button:hover {
+				background-color: #0056b3;
+			}
+			#message-list {
+				list-style-type: none;
+				padding: 0;
+			}
+			input[type="text"] {
+				padding: 0.5em;
+				border: 1px solid #ccc;
+				border-radius: 0.3em;
+				margin-right: 0.5em;
+				min-width: 20em
+			}
+			input[type="text"]:focus {
+				outline: none;
+				border-color: #007bff;
+			}
+			#message-list li {
+				margin: 0.5em 0;
+				padding: 0.5em;
+				background-color: #f9f9f9;
+				border-radius: 0.3em;
+			}
+			h1 {
+				color: #333;
+				margin-bottom: 0;
+			}
+		</style>
 		<title>Active Meetup</title>
 	</head>
-	<body>
+	<body class="meetup_layout">
 		<h1>Active Meetup: {{ .Meetup.Name }}</h1>
 
-		<div>
+		<section class="nav">
 			<button onclick="startConnection()">Start Meetup</button>
 			<button onclick="invite()">Invite coworkers</button>
 			<button onclick="terminate()">Close Meetup</button>
 			<button onclick="leaveMeetup()">Leave Meetup</button>
-		</div>
+		</section>
 		<br />
 
-		<input type="text" id="message-input" placeholder="Type a message..." />
-		<button onclick="sendMessage()">Send</button>
+		<div>
+			<input type="text" id="message-input" placeholder="Type a message..." />
+			<button onclick="sendMessage()">Send</button>
+		</div>
 
 		<script>
 			let socket

@@ -1,8 +1,21 @@
+enum InvitationStatus {
+	Pending
+	Accepted
+	declined
+}
+
 type Meetup {
 	id: ID!
 	name: String!
 	description: String!
 	user: User!
+}
+
+type Invitation {
+	ID: ID!
+	MeetupID: ID!
+	UserID: ID!
+	Status: InvitationStatus!
 }
 
 input NewMeetup {
@@ -19,8 +32,15 @@ input MeetupsFilter {
 	name: String
 }
 
+input InviteUserInput {
+	meetupID: ID!
+	userID: ID!
+}
+
 extend type Query {
 	meetups(filter: MeetupsFilter, limit: Int = 10, offset: Int = 0): [Meetup!]!
+	getMeetupUsersInvited(meetupID: ID!): [User!]!
+	meetup(meetupID: ID!): Meetup!
 }
 
 extend type Mutation {
@@ -28,7 +48,9 @@ extend type Mutation {
 	updateMeetup(id: ID!, input: UpdateMeetup!): Meetup!
 	deleteMeetup(id: ID!): Boolean!
 
-  #! New mutation to start a meetup
-   startMeetup(meetupID: ID!): Boolean!
+	#! New mutation to start a meetup
+	startMeetup(meetupID: ID!): Boolean!
+	inviteUser(input: InviteUserInput!): User!
+	removeUser(input: InviteUserInput!, loginUserID: ID!): User!
+	closeMeetup(meetupID: ID!): Boolean!
 }
-

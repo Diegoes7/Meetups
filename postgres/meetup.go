@@ -44,6 +44,21 @@ func (m *MeetupRepo) GetMeetups(filter *models.MeetupsFilter, limit, offset *int
 	return meetups, nil
 }
 
+func (m *MeetupRepo) GetMeetup(meetupID string) (*models.Meetup, error) {
+	var meetup models.Meetup
+
+	err := m.DB.Model(&meetup).
+		Where("id = ?", meetupID).
+		Limit(1).
+		Select()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &meetup, nil
+}
+
 func (m *MeetupRepo) CreateMeetup(meetup *models.Meetup) (*models.Meetup, error) {
 	_, err := m.DB.Model(meetup).Returning("*").Insert()
 

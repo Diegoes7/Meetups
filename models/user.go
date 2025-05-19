@@ -8,7 +8,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// tableName struct{} `pg:"meetup_invitations"`
 type User struct {
+	tableName struct{}   `pg:"users"` // ✅ Critical for Go-pg to resolve the alias in JOIN
 	ID        string     `json:"id"`
 	Username  string     `json:"username"`
 	Email     string     `json:"email"`

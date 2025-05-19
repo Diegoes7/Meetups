@@ -45,6 +45,7 @@ func main() {
 
 	userRepo := postgres.UserRepo{DB: DB}
 	meetupRepo := postgres.MeetupRepo{DB: DB}
+	invitationRepo := postgres.InvitationRepo{DB: DB}
 
 	//$ Mux object is the main router that handles HTTP requests
 	//! chi.NewRouter is used to instantiate a new Mux, which is the main router
@@ -71,7 +72,7 @@ func main() {
 	router.Use(middleware.Logger)
 	router.Use(customMiddleware.AuthMiddleware(userRepo))
 
-	d := domain.NewDomain(userRepo, meetupRepo)
+	d := domain.NewDomain(userRepo, meetupRepo, invitationRepo)
 
 	resolver := &graph.Resolver{Domain: d}
 
@@ -132,18 +133,20 @@ func main() {
 		err = tmpl.Execute(w, data)
 		if err != nil {
 			log.Printf("Template execution error: %s", err)
-			http.Error(w, "Error rendering page", http.StatusInternalServerError)
+			http.Error(w, "No messages yet..", http.StatusInternalServerError)
 		}
 	})
 
 	router.Get("/me", handlers.MeHandler)
 	router.Post("/login", handlers.LoginHandler)
+	router.Post("/invite", handlers.InviteUserHandler(d))
+	router.Get("/api/users", handlers.UsersHandler(d))
+	router.Handle("/query", loader.DataLoaderMiddleware(DB, queryHandler))
 
 	// router.Handle("/subscriptions", srv)
 
 	// http.HandleFunc("/subscriptions", handlers.HandleSubscription)
 	router.HandleFunc("/subscriptions", handlers.HandleSubscription)
-
 
 	// router.Get("/meetup/{meetupID}", func(w http.ResponseWriter, r *http.Request) {
 	// 	tmpl, err := template.ParseFiles("templates/meetup_chat.gohtml")

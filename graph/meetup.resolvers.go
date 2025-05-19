@@ -6,6 +6,9 @@ package graph
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"time"
 
 	"github.com/Diegoes7/meetups/loader"
 	"github.com/Diegoes7/meetups/models"
@@ -33,6 +36,7 @@ func (r *mutationResolver) DeleteMeetup(ctx context.Context, id string) (bool, e
 
 // StartMeetup is the resolver for the startMeetup field.
 func (r *mutationResolver) StartMeetup(ctx context.Context, meetupID string) (bool, error) {
+	SubManager.SetActive(meetupID, true)
 	SubManager.Publish(meetupID, &models.MeetupUpdate{
 		MeetupID: meetupID,
 		Started:  true,
@@ -40,9 +44,82 @@ func (r *mutationResolver) StartMeetup(ctx context.Context, meetupID string) (bo
 	return true, nil
 }
 
+// InviteUser is the resolver for the inviteUser field.
+func (r *mutationResolver) InviteUser(ctx context.Context, input models.InviteUserInput) (*models.User, error) {
+	// Validate meetup exists
+	_, err := r.Domain.MeetupRepo.GetByID(input.MeetupID)
+	if err != nil {
+		return nil, fmt.Errorf("meetup not found: %w", err)
+	}
+
+	// Validate user exists
+	user, err := r.Domain.UserRepo.GetUserByID(input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Check if already invited
+	alreadyInvited, _ := r.Domain.InvitationRepo.IsUserInvited(input.MeetupID, input.UserID)
+	if alreadyInvited {
+		log.Printf("🚫 user already invited: meetupID=%d userID=%d", input.MeetupID, input.UserID)
+		return nil, fmt.Errorf("user already invited to this meetup")
+	}
+
+	// Save the invitation
+	_, err = r.Domain.InvitationRepo.InviteUser(input.MeetupID, input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to invite user: %w", err)
+	}
+
+	// ✅ Return the invited user object
+	return user, nil
+}
+
+// RemoveUser is the resolver for the removeUser field.
+func (r *mutationResolver) RemoveUser(ctx context.Context, input models.InviteUserInput, loginUserID string) (*models.User, error) {
+	return r.Domain.RemoveUserFromMeetup(ctx, input, loginUserID)
+}
+
+// CloseMeetup is the resolver for the closeMeetup field.
+func (r *mutationResolver) CloseMeetup(ctx context.Context, meetupID string) (bool, error) {
+	if !SubManager.IsActive(meetupID) {
+		return false, fmt.Errorf("meetup is not active")
+	}
+	SubManager.SetActive(meetupID, false)
+
+	// System message for closing
+	systemMessage := &models.Message{
+		ID:        "system",                         // or generate a UUID if needed
+		Sender:    &models.User{Username: "system"}, // minimal system sender
+		Content:   "Meetup has been closed by the host.",
+		Timestamp: time.Now(),
+	}
+
+	SubManager.Publish(meetupID, &models.MeetupUpdate{
+		MeetupID:   meetupID,
+		Closed:     true,
+		NewMessage: systemMessage,
+	})
+
+	// Force close all WebSocket connections
+	SubManager.CloseMeetup(meetupID)
+
+	return true, nil
+}
+
 // Meetups is the resolver for the meetups field.
 func (r *queryResolver) Meetups(ctx context.Context, filter *models.MeetupsFilter, limit *int32, offset *int32) ([]*models.Meetup, error) {
 	return r.Domain.MeetupRepo.GetMeetups(filter, limit, offset)
+}
+
+// GetMeetupUsersInvited is the resolver for the getMeetupUsersInvited field.
+func (r *queryResolver) GetMeetupUsersInvited(ctx context.Context, meetupID string) ([]*models.User, error) {
+	return r.Domain.InvitationRepo.GetInvitedUsersByMeetupID(meetupID)
+}
+
+// Meetup is the resolver for the meetup field.
+func (r *queryResolver) Meetup(ctx context.Context, meetupID string) (*models.Meetup, error) {
+	return r.Domain.MeetupRepo.GetMeetup(meetupID)
 }
 
 // Meetup returns MeetupResolver implementation.

@@ -3,8 +3,24 @@
 package models
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 )
+
+type Invitation struct {
+	tableName struct{} `pg:"meetup_invitations"`
+	ID       string           `json:"ID"`
+	MeetupID int64           `json:"MeetupID"`
+	UserID   int64           `json:"UserID"`
+	Status   InvitationStatus `json:"Status"`
+}
+
+type InviteUserInput struct {
+	MeetupID string `json:"meetupID"`
+	UserID   string `json:"userID"`
+}
 
 type LoginInput struct {
 	Email    string `json:"email"`
@@ -14,6 +30,7 @@ type LoginInput struct {
 type MeetupUpdate struct {
 	MeetupID   string   `json:"meetupId"`
 	Started    bool     `json:"started"`
+	Closed   bool   		`json:"closed,omitempty"`
 	NewMessage *Message `json:"newMessage,omitempty"`
 }
 
@@ -59,4 +76,47 @@ type TimeUnix struct {
 type UpdateMeetup struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+}
+
+type InvitationStatus string
+
+const (
+	InvitationStatusPending  InvitationStatus = "Pending"
+	InvitationStatusAccepted InvitationStatus = "Accepted"
+	InvitationStatusDeclined InvitationStatus = "declined"
+)
+
+var AllInvitationStatus = []InvitationStatus{
+	InvitationStatusPending,
+	InvitationStatusAccepted,
+	InvitationStatusDeclined,
+}
+
+func (e InvitationStatus) IsValid() bool {
+	switch e {
+	case InvitationStatusPending, InvitationStatusAccepted, InvitationStatusDeclined:
+		return true
+	}
+	return false
+}
+
+func (e InvitationStatus) String() string {
+	return string(e)
+}
+
+func (e *InvitationStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InvitationStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InvitationStatus", str)
+	}
+	return nil
+}
+
+func (e InvitationStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

@@ -16,12 +16,14 @@ var (
 type Domain struct {
 	UserRepo   postgres.UserRepo
 	MeetupRepo postgres.MeetupRepo
+	InvitationRepo postgres.InvitationRepo
 }
 
-func NewDomain(userRepo postgres.UserRepo, meetupRepo postgres.MeetupRepo) *Domain {
+func NewDomain(userRepo postgres.UserRepo, meetupRepo postgres.MeetupRepo, invitationRepo postgres.InvitationRepo) *Domain {
 	return &Domain{
 		UserRepo:   userRepo,
 		MeetupRepo: meetupRepo,
+		InvitationRepo: invitationRepo,
 	}
 }
 

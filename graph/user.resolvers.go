@@ -33,6 +33,11 @@ func (r *mutationResolver) Login(ctx context.Context, input models.LoginInput) (
 	return r.Domain.Login(ctx, input)
 }
 
+// Logout is the resolver for the logout field.
+func (r *mutationResolver) Logout(ctx context.Context, userID string) (*models.User, error) {
+	return r.Domain.Logout(ctx, userID)
+}
+
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*models.User, error) {
 	return r.Domain.UserRepo.GetUserByID(id)

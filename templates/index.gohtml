@@ -19,6 +19,7 @@
 			}
 			#loginForm {
 				display: none;
+				position: relative;
 			}
 			#userInfo {
 				display: none;
@@ -45,6 +46,16 @@
 			}
 			button:hover {
 				background-color: #0056b3;
+			}
+			.register_button {
+				text-decoration: none;
+				font-weight: bold;
+				color: #007bff;
+				border: 1px solid #007bff;
+				border-radius: 1em;
+				padding: 0.2em 0.4em;
+				outline: none;
+				font-size: 1.2em;
 			}
 		</style>
 		<title>Meetup App</title>
@@ -76,61 +87,61 @@
 				})
 					.then((response) => {
 						if (!response.ok) {
-							throw new Error('Network response was not ok')
+							throw new Error('Network response was not ok');
 						}
-						return response.json()
+						return response.json();
 					})
 					.then((data) => {
 						// Ensure data contains 'meetups' and 'users'
 						if (data.data) {
 							// Display meetups
-							let meetupsHTML = ''
+							let meetupsHTML = '';
 							data.data.meetups.forEach((meetup) => {
-								meetupsHTML += `<p>${meetup.name} <button onclick="goToMeetup(${meetup.id})">Go to Meetup</button></p>`
-							})
-							document.getElementById('meetups').innerHTML = meetupsHTML
+								meetupsHTML += `<p>${meetup.name} <button onclick="goToMeetup(${meetup.id})">Go to Meetup</button></p>`;
+							});
+							document.getElementById('meetups').innerHTML = meetupsHTML;
 
 							// Display users
-							let usersHTML = ''
+							let usersHTML = '';
 							data.data.users.forEach((user) => {
-								usersHTML += `<p>${user.username}, ${user.email}</p>`
-							})
-							document.getElementById('users').innerHTML = usersHTML
+								usersHTML += `<p>${user.username}, ${user.email}</p>`;
+							});
+							document.getElementById('users').innerHTML = usersHTML;
 						} else {
-							throw new Error('Invalid response structure')
+							throw new Error('Invalid response structure');
 						}
 					})
-					.catch((error) => console.error('Error:', error))
+					.catch((error) => console.error('Error:', error));
 			}
 
 			// Navigate to active meetup page
 			function goToMeetup(meetupId) {
-				window.location.href = `/meetup/${meetupId}`
+				window.location.href = `/meetup/${meetupId}`;
 			}
 
 			// check if user is logged in
 			async function checkSession() {
-				const response = await fetch('/me')
+				const response = await fetch('/me');
 
 				if (response.ok) {
-					const user = await response.json()
+					const user = await response.json();
 
 					// Check if user object is empty
 					if (Object.keys(user).length === 0) {
-						document.getElementById('loginForm').style.display = 'block'
-						document.getElementById('userInfo').style.display = 'none'
+						document.getElementById('loginForm').style.display = 'block';
+						document.getElementById('userInfo').style.display = 'none';
 					} else {
-						document.getElementById('loginForm').style.display = 'none'
-						document.getElementById('username').textContent = user.username
-						document.getElementById('userEmail').textContent = user.email
-						document.getElementById('firstName').textContent = user.firstName
-						document.getElementById('lastName').textContent = user.lastName
-						document.getElementById('userInfo').style.display = 'block'
+						document.getElementById('loginForm').style.display = 'none';
+						document.getElementById('username').textContent = user.username;
+						document.getElementById('userEmail').textContent = user.email;
+						document.getElementById('firstName').textContent = user.firstName;
+						document.getElementById('lastName').textContent = user.lastName;
+						document.getElementById('userInfo').style.display = 'block';
 					}
 				} else {
 					// If status is not 200 (e.g., 401 or 500), show login form
-					document.getElementById('loginForm').style.display = 'block'
-					document.getElementById('userInfo').style.display = 'none'
+					document.getElementById('loginForm').style.display = 'block';
+					document.getElementById('userInfo').style.display = 'none';
 				}
 			}
 
@@ -139,11 +150,11 @@
 			// Combine both functions to execute on page load
 			window.onload = async function () {
 				// Check if the user is logged in
-				await checkSession()
+				await checkSession();
 
 				// Call your other fetch data function
-				await fetchData()
-			}
+				await fetchData();
+			};
 		</script>
 	</head>
 	<body class="layout">

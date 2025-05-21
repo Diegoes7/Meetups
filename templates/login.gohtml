@@ -1,8 +1,16 @@
 {{ define "login" }}
 <body>
-	<h1>Login</h1>
+	<div
+		style="display: flex; justify-content: space-between; align-items: center"
+	>
+		<h1 style="margin-bottom: 0.3em">Login</h1>
+		<!-- <div class="register_button"> -->
+		<a href="/register" class="register_button">Register</a>
+		<!-- </div> -->
+	</div>
 
 	<form id="loginForm">
+		<!-- Top-right corner link -->
 		<label for="email">Email:</label><br />
 		<input type="text" id="email" name="email" required /><br /><br />
 
@@ -18,15 +26,23 @@
 		<p><strong>First Name:</strong> <span id="firstName"></span></p>
 		<p><strong>Last Name:</strong> <span id="lastName"></span></p>
 	</div>
-
+	<div>
+		<button
+			id="logout_btn"
+			onclick="logout()"
+			style="margin-top: 1em; font-size: 0.9em; display: none"
+		>
+			Logout
+		</button>
+	</div>
 	<script>
 		document
 			.getElementById('loginForm')
 			.addEventListener('submit', async function (e) {
-				e.preventDefault()
+				e.preventDefault();
 
-				const email = document.getElementById('email').value
-				const password = document.getElementById('password').value
+				const email = document.getElementById('email').value;
+				const password = document.getElementById('password').value;
 
 				const response = await fetch('/login', {
 					method: 'POST',
@@ -34,27 +50,38 @@
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({ email, password }),
-				})
+				});
 
 				if (response.ok) {
-					const data = await response.json()
+					const data = await response.json();
 
 					// Hide the form
-					document.getElementById('loginForm').style.display = 'none'
+					document.getElementById('loginForm').style.display = 'none';
 
-					const userInfo = data.user
+					const userInfo = data.user;
 					// Fill in the user info
-					document.getElementById('username').textContent = data.user.username
-					document.getElementById('userEmail').textContent = data.user.email
-					document.getElementById('firstName').textContent = data.user.firstName
-					document.getElementById('lastName').textContent = data.user.lastName
+					document.getElementById('username').textContent = data.user.username;
+					document.getElementById('userEmail').textContent = data.user.email;
+					document.getElementById('firstName').textContent =
+						data.user.firstName;
+					document.getElementById('lastName').textContent = data.user.lastName;
 
 					// Show the user info
-					document.getElementById('userInfo').style.display = 'block'
+					document.getElementById('userInfo').style.display = 'block';
+					document.getElementById('logout_btn').style.display = 'block';
 				} else {
-					alert('Login failed. Please check your credentials.')
+					alert('Login failed. Please check your credentials.');
 				}
-			})
+			});
+
+		async function logout() {
+			await fetch('/logout', {
+				method: 'POST',
+				credentials: 'include', // include the cookie
+			});
+
+			window.location.reload();
+		}
 	</script>
 </body>
 

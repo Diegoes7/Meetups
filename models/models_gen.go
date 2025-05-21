@@ -10,7 +10,6 @@ import (
 )
 
 type Invitation struct {
-	tableName struct{} `pg:"meetup_invitations"`
 	ID       string           `json:"ID"`
 	MeetupID int64           `json:"MeetupID"`
 	UserID   int64           `json:"UserID"`
@@ -30,7 +29,7 @@ type LoginInput struct {
 type MeetupUpdate struct {
 	MeetupID   string   `json:"meetupId"`
 	Started    bool     `json:"started"`
-	Closed   bool   		`json:"closed,omitempty"`
+	Closed    bool     `json:"started"`
 	NewMessage *Message `json:"newMessage,omitempty"`
 }
 

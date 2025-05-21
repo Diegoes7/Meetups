@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/Diegoes7/meetups/models"
@@ -29,7 +30,15 @@ func (d *Domain) Login(ctx context.Context, input models.LoginInput) (*models.Au
 		AuthToken: token,
 		User:      user,
 	}, nil
+}
 
+func (d *Domain) Logout(ctx context.Context, userID string) (*models.User, error) {
+	user, err := d.UserRepo.GetUserByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	// No token blacklist or session invalidation here
+	return user, nil
 }
 
 // Register is the resolver for the register field.

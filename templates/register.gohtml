@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Register</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 2em;
+			}
+			form {
+				display: flex;
+				flex-direction: column;
+				width: 300px;
+				gap: 0.5em;
+			}
+			label {
+				font-weight: bold;
+			}
+			input {
+				padding: 0.4em;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+			}
+			button {
+				padding: 0.5em;
+				background: #007bff;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 1em;
+				width: 60%;
+			}
+			button:hover {
+				background: #0056b3;
+			}
+			.layout {
+				display: flex;
+				flex-direction: column;
+				flex: 1 1 auto;
+				justify-content: space-between;
+				font-family: Arial, sans-serif;
+				margin: 1em;
+				border: 0.1em solid #ccc;
+				border-radius: 0.5em;
+				padding: 0 0.5em 1em 1.5em;
+			}
+		</style>
+	</head>
+	<body class="layout">
+		<h1>Register</h1>
+		<form id="register-form">
+			<label>Username:</label>
+			<input type="text" id="username" required />
+
+			<label>Email:</label>
+			<input type="email" id="email" required />
+
+			<label>Password:</label>
+			<input type="password" id="password" required />
+
+			<label>Confirm Password:</label>
+			<input type="password" id="confirm_password" required />
+
+			<label>First Name:</label>
+			<input type="text" id="firstName" required />
+
+			<label>Last Name:</label>
+			<input type="text" id="lastName" required />
+
+			<button type="submit">Register</button>
+		</form>
+
+		<script>
+			document
+				.getElementById('register-form')
+				.addEventListener('submit', async (e) => {
+					e.preventDefault();
+
+					const query = `
+			          	mutation Register($input: RegisterArgs!) {
+			          		register(input: $input) {
+                      authToken {
+                        accessToken,
+                        expiredAt,
+                      },
+			          			user {
+			          				id
+			          				username
+			          			}
+			          		}
+			          	}
+			          `;
+
+					const variables = {
+						input: {
+							username: document.getElementById('username').value,
+							email: document.getElementById('email').value,
+							password: document.getElementById('password').value,
+							confirmPassword:
+								document.getElementById('confirm_password').value,
+							firstName: document.getElementById('firstName').value,
+							lastName: document.getElementById('lastName').value,
+						},
+					};
+
+					const response = await fetch('/query', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						credentials: 'include',
+						body: JSON.stringify({ query, variables }),
+					});
+
+					const result = await response.json();
+					// if (result.data.register.token) {
+					// 	localStorage.setItem('authToken', result.data.register.token); // Optional
+					// }
+					if (result.errors) {
+						alert('Registration failed: ' + result.errors[0].message);
+					} else {
+						alert('Welcome, ' + result.data.register.user.username + '!');
+						const authToken = result.data.register.authToken.accessToken;
+						document.cookie = `authToken=${authToken}; path=/; max-age=2592000`; // 1 day
+						window.location.href = '/'; // or redirect to login
+					}
+				});
+
+			// async function handleRegister(event) {
+			// 	event.preventDefault();
+
+			// 	const input = {
+			// 		username: document.getElementById('username').value,
+			// 		email: document.getElementById('email').value,
+			// 		password: document.getElementById('password').value,
+			// 		confirmPassword: document.getElementById('confirm_password').value,
+			// 		firstName: document.getElementById('firstName').value,
+			// 		lastName: document.getElementById('lastName').value,
+			// 	};
+
+			// 	const query = `
+			//               	mutation Register($input: RegisterArgs!) {
+			//               		register(input: $input) {
+			//               			token
+			//               			user {
+			//               				id
+			//               				username
+			//               			}
+			//               		}
+			//               	}
+			//               `;
+
+			// 	try {
+			// 		const response = await fetch('/query', {
+			// 			method: 'POST',
+			// 			headers: {
+			// 				'Content-Type': 'application/json',
+			// 			},
+			// 			credentials: 'include', // important if using HTTP-only cookie
+			// 			body: JSON.stringify({ query, variables: { input } }),
+			// 		});
+
+			// 		const result = await response.json();
+
+			// 		if (result.errors) {
+			// 			alert('Registration failed: ' + result.errors[0].message);
+			// 			return;
+			// 		}
+
+			// 		// ✅ If using token in response (not Set-Cookie)
+			// 		if (result.data.register.token) {
+			// 			localStorage.setItem('authToken', result.data.register.token); // Optional
+			// 		}
+
+			// 		if (result.data.register) {
+			// 			// Cookie is already set by server
+			// 			window.location.href = '/';
+			// 		}
+			// 	} catch (error) {
+			// 		console.error('Error during registration:', error);
+			// 		alert('Something went wrong.');
+			// 	}
+			// }
+		</script>
+	</body>
+</html>

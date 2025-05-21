@@ -137,8 +137,19 @@ func main() {
 		}
 	})
 
+	router.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.ParseFiles("templates/register.gohtml")
+		if err != nil {
+			http.Error(w, "Failed to load registration page", http.StatusInternalServerError)
+			return
+		}
+		tmpl.Execute(w, nil)
+	})
+
 	router.Get("/me", handlers.MeHandler)
 	router.Post("/login", handlers.LoginHandler)
+	router.Post("/logout", handlers.LogoutHandler)
+
 	router.Post("/invite", handlers.InviteUserHandler(d))
 	router.Get("/api/users", handlers.UsersHandler(d))
 	router.Handle("/query", loader.DataLoaderMiddleware(DB, queryHandler))

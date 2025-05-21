@@ -33,4 +33,5 @@ extend type Query {
 extend type Mutation {
 	register(input: RegisterArgs): AuthResponse!
 	login(input: LoginInput!): AuthResponse!
+	logout(userID: ID!): User!
 }

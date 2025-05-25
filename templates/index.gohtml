@@ -34,6 +34,34 @@
 				border: 0.1em solid #ccc;
 				border-radius: 0.5em;
 				padding: 0 0.5em 1em 1.5em;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+			}
+			input {
+				padding: 0.4em;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				margin-bottom: 1em;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+				margin-top: 0.5em;
+			}
+			label.required::after {
+				content: ' *';
+				color: red;
+			}
+			.delete_button {
+				background-color: #e53935;
+				color: white;
+				border: none;
+				padding: 0.4em 0.8em;
+				margin-left: 0.5em;
+				border-radius: 4px;
+				cursor: pointer;
+				font-weight: bold;
+				transition: background-color 0.2s ease;
+			}
+
+			.delete_button:hover {
+				background-color: #c62828;
 			}
 			button {
 				padding: 0.5em 1em;
@@ -43,118 +71,74 @@
 				border-radius: 0.3em;
 				cursor: pointer;
 				margin-top: 1em;
+				cursor: pointer;
+				text-decoration: none;
 			}
 			button:hover {
 				background-color: #0056b3;
 			}
-			.register_button {
+			.register_link {
+				padding: 0.5em;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 1em;
+				width: fit-content;
 				text-decoration: none;
-				font-weight: bold;
-				color: #007bff;
-				border: 1px solid #007bff;
-				border-radius: 1em;
-				padding: 0.2em 0.4em;
-				outline: none;
-				font-size: 1.2em;
+				margin-top: 1em;
+			}
+			.register_link:hover {
+				background-color: white;
+				color: #0056b3;
+				border: 1px solid #0056b3;
+				padding: 0.4em;
+			}
+			.meetup {
+				margin-bottom: 1em;
+				border: 1px solid #d7c4c4;
+				padding: 0 0.5em 8px 1em;
+				border-radius: 4px;
 			}
 		</style>
 		<title>Meetup App</title>
-		<script>
-			// Fetch users and meetups and display the results
-			function fetchData() {
-				fetch('http://localhost:8080/query', {
-					// Ensure your URL is correct
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({
-						query: `{
-                        meetups {
-                            id
-                            name
-                            description
-                        }
-                        users {
-                            id
-                            username
-                            email
-                            firstName
-	                          lastName
-                        }
-                    }`,
-					}),
-				})
-					.then((response) => {
-						if (!response.ok) {
-							throw new Error('Network response was not ok');
-						}
-						return response.json();
-					})
-					.then((data) => {
-						// Ensure data contains 'meetups' and 'users'
-						if (data.data) {
-							// Display meetups
-							let meetupsHTML = '';
-							data.data.meetups.forEach((meetup) => {
-								meetupsHTML += `<p>${meetup.name} <button onclick="goToMeetup(${meetup.id})">Go to Meetup</button></p>`;
-							});
-							document.getElementById('meetups').innerHTML = meetupsHTML;
+		<script defer>
+			let CURRENT_USER = null;
+			let CURRENT_MEETUP = null;
 
-							// Display users
-							let usersHTML = '';
-							data.data.users.forEach((user) => {
-								usersHTML += `<p>${user.username}, ${user.email}</p>`;
-							});
-							document.getElementById('users').innerHTML = usersHTML;
-						} else {
-							throw new Error('Invalid response structure');
-						}
-					})
-					.catch((error) => console.error('Error:', error));
-			}
-
-			// Navigate to active meetup page
-			function goToMeetup(meetupId) {
-				window.location.href = `/meetup/${meetupId}`;
-			}
-
-			// check if user is logged in
 			async function checkSession() {
-				const response = await fetch('/me');
+				try {
+					const response = await fetch('/me');
 
-				if (response.ok) {
+					if (!response.ok) {
+						throw new Error('No authenticated user');
+					}
+
 					const user = await response.json();
+					CURRENT_USER = user;
 
-					// Check if user object is empty
+					// Update UI based on user data
 					if (Object.keys(user).length === 0) {
+						// Empty user object – show login
 						document.getElementById('loginForm').style.display = 'block';
 						document.getElementById('userInfo').style.display = 'none';
 					} else {
+						// Populate user info
 						document.getElementById('loginForm').style.display = 'none';
 						document.getElementById('username').textContent = user.username;
 						document.getElementById('userEmail').textContent = user.email;
 						document.getElementById('firstName').textContent = user.firstName;
 						document.getElementById('lastName').textContent = user.lastName;
 						document.getElementById('userInfo').style.display = 'block';
+						document.getElementById('logout_btn').style.display = 'block';
 					}
-				} else {
-					// If status is not 200 (e.g., 401 or 500), show login form
+				} catch (error) {
+					console.warn(error.message);
 					document.getElementById('loginForm').style.display = 'block';
 					document.getElementById('userInfo').style.display = 'none';
 				}
 			}
-
-			// Call fetchData when page loads
-			// window.onload = fetchData
-			// Combine both functions to execute on page load
-			window.onload = async function () {
-				// Check if the user is logged in
-				await checkSession();
-
-				// Call your other fetch data function
-				await fetchData();
-			};
 		</script>
 	</head>
 	<body class="layout">
@@ -165,13 +149,24 @@
 		</section>
 
 		<section class="layout">
-			<h2>Meetups</h2>
-			<div id="meetups"></div>
+			<div
+				style="
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+				"
+			>
+				<h2 style="margin: 0.5em 0">Meetups</h2>
+				{{ template "create_meetup_modal" . }}
+			</div>
+			<ol id="meetups">
+				{{ template "meetups" . }}
+			</ol>
 		</section>
 
 		<section class="layout">
-			<h2>Users</h2>
-			<div id="users"></div>
+			<h2>Coworkers</h2>
+			<ol style="margin: 0" id="users"></ol>
 		</section>
 	</body>
 </html>

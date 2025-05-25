@@ -85,13 +85,34 @@ func parseToken(r *http.Request) (*jwt.Token, error) {
 		}
 	}
 
-	token, err := request.ParseFromRequest(r, authExtractor, keyFunc)
+	token, err := jwt.Parse(tokenStr, keyFunc)
 	if err != nil {
 		return nil, errors.Wrap(err, "parseToken error")
 	}
 
 	return token, nil
 }
+
+// func parseToken(r *http.Request) (*jwt.Token, error) {
+// 	keyFunc := func(token *jwt.Token) (interface{}, error) {
+// 		return []byte(os.Getenv("JWT_SECRET")), nil
+// 	}
+
+// 	// Try cookie first
+// 	if cookie, err := r.Cookie("authToken"); err == nil {
+// 		// Parse token string from cookie directly
+// 		return jwt.Parse(cookie.Value, keyFunc)
+// 	}
+
+// 	// Otherwise try header/query param fallback
+// 	// return request.ParseFromRequest(r, authExtractor, keyFunc)
+
+// 	token, err := request.ParseFromRequest(r, authExtractor, keyFunc)
+// 	if err != nil {
+// 		return nil, errors.Wrap(err, "parseToken error")
+// 	}
+// 	return token, nil
+// }
 
 func GetCurrentUserFromCTX(ctx context.Context) (*models.User, error) {
 	user, ok := ctx.Value(CurrentUserKey).(*models.User)

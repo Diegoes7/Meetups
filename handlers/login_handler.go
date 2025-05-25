@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/Diegoes7/meetups/models"
 )
@@ -100,7 +101,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true, // Set to false during local dev if not using HTTPS
+		// Secure:   true, // Set to false during local dev if not using HTTPS
+		Secure: os.Getenv("ENV") == "production",
 		SameSite: http.SameSiteLaxMode,
 	})
 

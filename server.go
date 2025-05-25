@@ -46,6 +46,7 @@ func main() {
 	userRepo := postgres.UserRepo{DB: DB}
 	meetupRepo := postgres.MeetupRepo{DB: DB}
 	invitationRepo := postgres.InvitationRepo{DB: DB}
+	messageRepo := postgres.MessageRepo{DB: DB}
 
 	//$ Mux object is the main router that handles HTTP requests
 	//! chi.NewRouter is used to instantiate a new Mux, which is the main router
@@ -72,7 +73,7 @@ func main() {
 	router.Use(middleware.Logger)
 	router.Use(customMiddleware.AuthMiddleware(userRepo))
 
-	d := domain.NewDomain(userRepo, meetupRepo, invitationRepo)
+	d := domain.NewDomain(userRepo, meetupRepo, invitationRepo, messageRepo)
 
 	resolver := &graph.Resolver{Domain: d}
 
@@ -95,9 +96,12 @@ func main() {
 	// Initialize the SubscriptionManager
 	graph.SubManager = graph.NewSubscriptionManager()
 
+	//! static files
+	http.Handle("/helper/", http.StripPrefix("/helper/", http.FileServer(http.Dir("./templates"))))
+
 	//! Serve HTML on "/"
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("templates/index.gohtml", "templates/login.gohtml")
+		tmpl, err := template.ParseFiles("templates/index.gohtml", "templates/meetups.gohtml", "templates/login.gohtml", "templates/create_meetup_modal.gohtml")
 		if err != nil {
 			http.Error(w, "Error loading template", http.StatusInternalServerError)
 			return
@@ -123,7 +127,7 @@ func main() {
 			Meetup: meetup,
 		}
 
-		tmpl, err := template.ParseFiles("templates/meetup_chat.gohtml")
+		tmpl, err := template.ParseFiles("templates/meetup_chat.gohtml", "templates/messages.gohtml")
 		if err != nil {
 			log.Printf("Template parse error: %s", err)
 			http.Error(w, "Error loading template", http.StatusInternalServerError)
@@ -133,7 +137,7 @@ func main() {
 		err = tmpl.Execute(w, data)
 		if err != nil {
 			log.Printf("Template execution error: %s", err)
-			http.Error(w, "No messages yet..", http.StatusInternalServerError)
+			http.Error(w, "No messages yet.", http.StatusInternalServerError)
 		}
 	})
 

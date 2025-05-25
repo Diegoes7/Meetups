@@ -3,21 +3,27 @@
 	<div
 		style="display: flex; justify-content: space-between; align-items: center"
 	>
-		<h1 style="margin-bottom: 0.3em">Login</h1>
+		<h1 style="margin: 0.5em 0">Login</h1>
 		<!-- <div class="register_button"> -->
-		<a href="/register" class="register_button">Register</a>
+		<a href="/register" class="register_link"> Go To Register</a>
 		<!-- </div> -->
 	</div>
 
 	<form id="loginForm">
-		<!-- Top-right corner link -->
-		<label for="email">Email:</label><br />
-		<input type="text" id="email" name="email" required /><br /><br />
+		<div style="width: fit-content">
+			<!-- Top-right corner link -->
+			<label for="email" class="required">Email:</label>
+			<br />
+			<input type="text" id="email" name="email" required />
+			<br />
 
-		<label for="password">Password:</label><br />
-		<input type="password" id="password" name="password" required /><br /><br />
+			<label for="password" class="required">Password:</label><br />
+			<input type="password" id="password" name="password" required />
 
-		<button type="submit">Login</button>
+			<div style="display: flex; justify-content: flex-end">
+				<button type="submit" style="font-size: 14px">Login</button>
+			</div>
+		</div>
 	</form>
 
 	<div id="userInfo" style="display: none">
@@ -71,6 +77,9 @@
 					document.getElementById('logout_btn').style.display = 'block';
 				} else {
 					alert('Login failed. Please check your credentials.');
+				}
+				if (!response.ok) {
+					document.getElementById('logout_btn').style.display = 'none';
 				}
 			});
 

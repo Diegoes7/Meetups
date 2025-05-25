@@ -4,85 +4,181 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<style>
-			.meetup_layout {
+						.meetup_layout {
+							display: flex;
+							flex-direction: column;
+							flex: 1 1 auto;
+							justify-content: space-between;
+							font-family: Arial, sans-serif;
+							margin: 1em;
+							border: 0.1em solid #ccc;
+							border-radius: 0.5em;
+							padding: 0 0.5em 1em 1.5em;
+						}
+						.nav {
+							display: flex;
+							flex-wrap: wrap;
+							gap: 1em;
+						  margin: 1em 1em 1em 0;
+						  align-items: center
+							margin: 1em;
+						}
+						button {
+							padding: 0.5em 1em;
+							font-size: 0.9em;
+							font-weight: bolder;
+							background-color: #007bff;
+							color: white;
+							border: none;
+							border-radius: 0.3em;
+							cursor: pointer;
+							margin-top: 1em;
+						}
+						button:hover {
+							background-color: #0056b3;
+						}
+						#message-list {
+							list-style-type: none;
+							padding: 0;
+						}
+						textarea[type="text"] {
+							padding: 0.5em;
+							border: 1px solid #ccc;
+							border-radius: 0.3em;
+							margin-right: 1.5em;
+							min-width: 20em;
+							max-width: 90%;
+						}
+						textarea[type="text"]:focus {
+							outline: none;
+							border-color: #007bff;
+						}
+						#message-list li {
+							margin: 0.5em 0;
+							padding: 0.5em;
+							background-color: #f9f9f9;
+							border-radius: 0.3em;
+						}
+						h1 {
+							color: #333;
+							margin-bottom: 0;
+						}
+						.message-container {
+							display: flex;
+							flex-wrap: wrap;
+							/* flex-direction: column; */
+							margin-bottom: 1em;
+							align-items: flex-end
+						}
+						.message-container button {
+							margin-top: 0.5em;
+						}
+						.underline {
+							text-decoration: underline;
+						}
+						.modal {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: rgba(0, 0, 0, 0.6);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				z-index: 1000;
+			}
+
+			.modal-content {
 				display: flex;
 				flex-direction: column;
-				flex: 1 1 auto;
-				justify-content: space-between;
-				font-family: Arial, sans-serif;
-				margin: 1em;
-				border: 0.1em solid #ccc;
+				background-color: white;
+				padding: 2em;
 				border-radius: 0.5em;
-				padding: 0 0.5em 1em 1.5em;
+				width: 90%;
+				max-width: 400px;
+				box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+				position: relative;
+				min-height: 20em;
 			}
-			.nav {
+			.modal-footer {
+				margin-top: auto;
 				display: flex;
-				flex-wrap: wrap;
-				gap: 1em;
-			  margin: 1em 1em 1em 0;
-			  align-items: center
-				margin: 1em;
+				justify-content: flex-end;
 			}
-			button {
-				padding: 0.5em 1em;
-				font-size: 0.9em;
-				font-weight: bolder;
-				background-color: #007bff;
-				color: white;
-				border: none;
-				border-radius: 0.3em;
+			.close-button {
+				position: absolute;
+				top: 10px;
+				right: 15px;
+				font-size: 1.5em;
 				cursor: pointer;
-				margin-top: 1em;
 			}
-			button:hover {
-				background-color: #0056b3;
-			}
-			#message-list {
-				list-style-type: none;
-				padding: 0;
-			}
-			textarea[type="text"] {
-				padding: 0.5em;
-				border: 1px solid #ccc;
-				border-radius: 0.3em;
-				margin-right: 1.5em;
-				min-width: 20em;
-				max-width: 90%;
-			}
-			textarea[type="text"]:focus {
-				outline: none;
-				border-color: #007bff;
-			}
-			#message-list li {
-				margin: 0.5em 0;
-				padding: 0.5em;
-				background-color: #f9f9f9;
-				border-radius: 0.3em;
-			}
-			h1 {
-				color: #333;
-				margin-bottom: 0;
-			}
-			.message-container {
+			.edit_container {
 				display: flex;
-				flex-wrap: wrap;
-				/* flex-direction: column; */
-				margin-bottom: 1em;
-				align-items: flex-end
+			  gap: 1em;
+			  align-items: center;
 			}
-			.message-container button {
-				margin-top: 0.5em;
+
+				label.required::after {
+				content: ' *';
+				color: red;
 			}
-			.underline {
-				text-decoration: underline;
+			.labelStyles {
+				margin-bottom: 0.5em;
 			}
 		</style>
 		<title>Active Meetup</title>
 	</head>
 	<body class="meetup_layout">
 		<h1 class="underline">Active Meetup: {{ .Meetup.Name }}</h1>
+		<div class="edit_container">
+			<h3 id="meetup-owner" style="margin-top: 1.5em" class="underline"></h3>
+			<button
+				id="edit-meetup-btn"
+				onclick="showEditForm()"
+				style="display: none"
+			>
+				Edit Meetup
+			</button>
+		</div>
 
-		<h3 id="meetup-owner" style="margin-top: 1.5em" class="underline"></h3>
+		<div id="edit-meetup-modal" class="modal" style="display: none">
+			<div class="modal-content">
+				<span class="close-button" onclick="closeEditModal()">&times;</span>
+
+				<h3>Edit Meetup</h3>
+
+				<label class="labelStyles" for="edit-name">Name:</label>
+				<input
+					style="height: 2em; padding-left: 0.5em"
+					type="text"
+					id="edit-name"
+				/>
+				<br />
+				<label class="labelStyles" for="edit-description">Description:</label>
+				<textarea
+					rows="7"
+					style="padding-left: 0.5em"
+					id="edit-description"
+					rows="3"
+				></textarea>
+				<div style="display: flex; justify-content: flex-end">
+					<button onclick="updateMeetup()">Update</button>
+				</div>
+			</div>
+		</div>
+
+		<p
+			style="
+				margin-bottom: 0;
+				border: 2px solid #0056b3;
+				padding: 1em;
+				border-radius: 4px;
+				width: fit-content;
+			"
+		>
+			{{ .Meetup.Description }}
+		</p>
 
 		<section class="nav">
 			<button id="start-btn" onclick="startMeetup()">Start Meetup</button>
@@ -90,27 +186,23 @@
 				Close Meetup
 			</button>
 			<button onclick="invite()">Invite Coworkers</button>
-			<div id="invite-section" style="display: none; margin-top: 1em">
-				<label for="user-select">Select a Coworker to invite:</label>
-				<select id="user-select"></select>
-				<button onclick="submitInvite()">Confirm Invite</button>
+
+			<div id="invite-modal" class="modal" style="display: none">
+				<div class="modal-content">
+					<span class="close-button" onclick="closeInviteModal()">&times;</span>
+					<h3>Invite Coworkers</h3>
+					<label style="margin-bottom: 0.5em" for="user-select"
+						>Select a Coworker to invite:</label
+					>
+					<select style="height: 2em" id="user-select"></select>
+					<div class="modal-footer">
+						<button onclick="submitInvite()">Confirm Invite</button>
+					</div>
+				</div>
 			</div>
 			<button onclick="leaveMeetup()">Leave Meetup</button>
 		</section>
 		<br />
-
-		<div class="message-container">
-			<textarea
-				cols="7"
-				rows="4"
-				type="text"
-				id="message-input"
-				placeholder="Type a message..."
-			></textarea>
-			<div>
-				<button onclick="sendMessage()">Send</button>
-			</div>
-		</div>
 
 		<script>
 			let CURRENT_USER = null;
@@ -193,6 +285,7 @@
 					if (user.id === CURRENT_MEETUP.user.id) {
 						return;
 					}
+					document.getElementById('invite-modal').style.display = 'flex';
 					const option = document.createElement('option');
 					option.value = user.id;
 					option.textContent = user.name;
@@ -200,7 +293,7 @@
 				});
 
 				// Show the dropdown section
-				document.getElementById('invite-section').style.display = 'block';
+				// document.getElementById('invite-section').style.display = 'block';
 			}
 
 			function invite() {
@@ -253,7 +346,8 @@
 						alert('Failed to invite user: ' + result.errors[0].message);
 					} else {
 						alert('User invited successfully.');
-						document.getElementById('invite-section').style.display = 'none';
+						closeInviteModal();
+						// document.getElementById('invite-section').style.display = 'none';
 					}
 				} catch (err) {
 					console.error('Error:', err);
@@ -263,17 +357,52 @@
 
 			let socket;
 
-			function sendMessage() {
-				let input = document.getElementById('message-input');
-				let message = input.value;
-				if (!message) return;
+			document.addEventListener('DOMContentLoaded', () => {
+				// socket = new WebSocket('ws://localhost:8080/ws'); // adjust to your WS endpoint
+				document
+					.getElementById('send_button')
+					.addEventListener('click', sendMessage);
+			});
 
-				// Send message via WebSocket if the connection is open
+			async function sendMessageToServer(message) {
+				const mutation = `
+												mutation SendMessage($input: NewMessageInput!) {
+													sendMessage(input: $input) {
+														id
+														content
+													}
+												}
+											`;
+
+				const variables = {
+					input: {
+						content: message,
+						meetupID: CURRENT_MEETUP.id,
+					},
+				};
+
+				const res = await fetch('/query', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ query: mutation, variables }),
+				});
+
+				const result = await res.json();
+				if (result.errors) {
+					alert('Failed to send message: ' + result.errors[0].message);
+					console.error(result.errors);
+					return false;
+				}
+
+				return result.data.sendMessage;
+			}
+
+			function sendMessageToSocket(message) {
 				if (socket && socket.readyState === WebSocket.OPEN) {
 					socket.send(
 						JSON.stringify({
-							meetupId: '{{ .Meetup.ID }}', // Send meetup ID
-							message: message, // Send the message
+							meetupId: '{{ .Meetup.ID }}',
+							message: message,
 						})
 					);
 
@@ -282,11 +411,114 @@
 					li.innerHTML = `<strong>You:</strong> ${message}`;
 					messageList.appendChild(li);
 					input.value = ''; // Clear input field
+					return true;
 				} else {
-					alert('Connection is not establish. Meetup is NOT active.');
-					console.error('WebSocket is not connected.');
+					console.warn('WebSocket is not connected.');
+					return false;
 				}
 			}
+
+			async function sendMessage() {
+				const input = document.getElementById('message-input');
+				const message = input.value.trim();
+				if (!message) return;
+
+				// Call GraphQL mutation
+				const savedMessage = await sendMessageToServer(message);
+				if (!savedMessage) return;
+
+				// Send to WebSocket
+				sendMessageToSocket(message);
+
+				// Update the UI
+				const messageList = document.getElementById('message-list');
+				const li = document.createElement('li');
+				li.innerHTML = `<strong>You:</strong> ${message}`;
+				messageList.appendChild(li);
+				input.value = '';
+			}
+
+			async function fetchMessages() {
+				const query = `
+										query GetMessages($meetupID: ID!) {
+											getMessagesByMeetup(meetupID: $meetupID) {
+												id
+												content
+												timestamp
+												sender {
+													id
+													username
+												}
+											}
+										}
+									`;
+
+				const res = await fetch('/query', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						query,
+						variables: { meetupID: CURRENT_MEETUP.id },
+					}),
+				});
+
+				const result = await res.json();
+				const messages = result.data?.getMessagesByMeetup || [];
+				const list = document.getElementById('message-list');
+				list.innerHTML = '';
+				messages.forEach((m) => {
+					const li = document.createElement('li');
+					const sendAt = new Date(m.timestamp);
+
+
+					const time = sendAt.toLocaleTimeString([], {
+						hour: '2-digit',
+						minute: '2-digit',
+						second: '2-digit',
+					});
+					const date = sendAt.toLocaleDateString([], {
+						day: '2-digit',
+						month: '2-digit',
+						year: 'numeric',
+					});
+
+					const formatted = `${time} - ${date}`;
+
+					console.log(formatted);
+
+					const chatter =
+						CURRENT_USER.id === m.sender.id
+							? `<strong>You: </strong> ${m.content} <span>${formatted}</span>`
+							: `${m.content} <strong>: ${m.sender.username}</strong>`;
+					li.innerHTML = chatter;
+					list.appendChild(li);
+				});
+			}
+
+			// function sendMessage() {
+			// 	let input = document.getElementById('message-input');
+			// 	let message = input.value;
+			// 	if (!message) return;
+
+			// 	// Send message via WebSocket if the connection is open
+			// 	if (socket && socket.readyState === WebSocket.OPEN) {
+			// 		socket.send(
+			// 			JSON.stringify({
+			// 				meetupId: '{{ .Meetup.ID }}', // Send meetup ID
+			// 				message: message, // Send the message
+			// 			})
+			// 		);
+
+			// 		let messageList = document.getElementById('message-list');
+			// 		let li = document.createElement('li');
+			// 		li.innerHTML = `<strong>You:</strong> ${message}`;
+			// 		messageList.appendChild(li);
+			// 		input.value = ''; // Clear input field
+			// 	} else {
+			// 		alert('Connection is not establish. Meetup is NOT active.');
+			// 		console.error('WebSocket is not connected.');
+			// 	}
+			// }
 
 			async function startMeetup() {
 				const meetupId = '{{ .Meetup.ID }}';
@@ -494,10 +726,14 @@
 					});
 
 					const result = await response.json();
+					if (result.data === null) {
+						document.getElementById('no_invitation').innerHTML =
+							'No other users invited, yet!';
+					}
 
 					if (result.errors) {
 						console.error('GraphQL errors:', result.errors);
-						alert('Failed to load invited users');
+						// alert('Failed to load invited users');
 						return;
 					}
 
@@ -509,6 +745,87 @@
 					console.error('Error loading invited users:', err);
 					alert('Something went wrong loading invited users.');
 				}
+			}
+
+			async function updateMeetup() {
+				const meetupId = CURRENT_MEETUP.id;
+				const name = document.getElementById('edit-name').value;
+				const description = document.getElementById('edit-description').value;
+
+				const query = `
+										mutation UpdateMeetup($id: ID!, $input: UpdateMeetup!) {
+											updateMeetup(id: $id, input: $input) {
+												id
+												name
+												description
+											}
+										}
+									`;
+
+				const variables = {
+					id: meetupId,
+					input: {
+						name,
+						description,
+					},
+				};
+
+				try {
+					const response = await fetch('/query', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						credentials: 'include',
+						body: JSON.stringify({ query, variables }),
+					});
+
+					const result = await response.json();
+
+					if (result.errors) {
+						alert('Update failed: ' + result.errors[0].message);
+						return;
+					}
+
+					alert('Meetup updated successfully.');
+					CURRENT_MEETUP.name = result.data.updateMeetup.name;
+					CURRENT_MEETUP.description = result.data.updateMeetup.description;
+
+					// Update UI
+					document.querySelector(
+						'h1'
+					).textContent = `Active Meetup: ${CURRENT_MEETUP.name}`;
+					document.querySelector('p').textContent = CURRENT_MEETUP.description;
+
+					document.getElementById('edit-meetup-modal').style.display = 'none';
+				} catch (err) {
+					console.error('Update failed:', err);
+					alert('Something went wrong.');
+				}
+			}
+
+			function showEditForm() {
+				const modal = document.getElementById('edit-meetup-modal');
+				document.getElementById('edit-name').value = CURRENT_MEETUP.name;
+				document.getElementById('edit-description').value =
+					CURRENT_MEETUP.description;
+				modal.style.display = 'flex';
+			}
+
+			function closeEditModal() {
+				document.getElementById('edit-meetup-modal').style.display = 'none';
+			}
+
+			function showInviteModal() {
+				const modal = document.getElementById('invite-modal');
+				document.getElementById('edit-name').value = CURRENT_MEETUP.name;
+				document.getElementById('edit-description').value =
+					CURRENT_MEETUP.description;
+				modal.style.display = 'flex';
+			}
+
+			function closeInviteModal() {
+				document.getElementById('invite-modal').style.display = 'none';
 			}
 
 			window.addEventListener('DOMContentLoaded', async () => {
@@ -536,6 +853,15 @@
 						document.querySelector(
 							'button[onclick="leaveMeetup()"]'
 						).style.display = 'none';
+
+						// document.getElementById('edit-meetup-form').style.display = 'block';
+						document.getElementById('edit-meetup-btn').style.display =
+							'inline-block';
+
+						// Fill current values
+						document.getElementById('edit-name').value = meetup.name;
+						document.getElementById('edit-description').value =
+							meetup.description;
 					} else {
 						// Hide Start/Close buttons for non-owners
 						document.getElementById('start-btn').style.display = 'none';
@@ -543,26 +869,49 @@
 					}
 				}
 
-				loadInvitedUsers();
+				await loadInvitedUsers();
+				await fetchMessages();
 			});
 		</script>
-		<h2 style="margin: 0; padding-top: 0.3em" class="underline">
-			Invited Users:
-		</h2>
-		<ol style="margin: 0" id="invited-users"></ol>
+		<section>
+			<h3
+				style="margin: 0; padding-top: 0.3em;"
+				class="underline"
+			>
+				Invited Users:
+			</h3>
+			<div id="no_invitation" style="margin-top: 1em"></div>
+			<ol style="margin: 0" id="invited-users"></ol>
+		</section>
 		<br />
 
-		<h2 class="underline">Messages:</h2>
-		<ul id="message-list">
-			{{
-				range.Messages
-			}}
-			<li>
-				<strong>{{ .User }}:</strong> {{ .Content }}
-			</li>
-			{{
-				end
-			}}
-		</ul>
+		{{ template "messages" . }}
+
+		<!-- <section>
+			<h2 class="underline">Messages:</h2>
+			<div class="message-container">
+				<textarea
+					cols="7"
+					rows="4"
+					type="text"
+					id="message-input"
+					placeholder="Type a message..."
+				></textarea>
+				<div>
+					<button onclick="sendMessage()">Send</button>
+				</div>
+			</div>
+			<ul id="message-list">
+				{{
+					range.Messages
+				}}
+				<li>
+					<strong>{{ .User }}:</strong> {{ .Content }}
+				</li>
+				{{
+					end
+				}}
+			</ul>
+		</section> -->
 	</body>
 </html>

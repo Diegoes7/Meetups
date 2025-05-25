@@ -3,7 +3,7 @@ package postgres
 import (
 	"fmt"
 	"log"
-	"strconv"
+	// "strconv"
 
 	"github.com/Diegoes7/meetups/models"
 	"github.com/go-pg/pg/v10"
@@ -49,30 +49,30 @@ func (r *InvitationRepo) IsUserInvited(meetupID string, userID string) (bool, er
 // 	return invitation, nil
 // }
 
-func (r *InvitationRepo) InviteUser(meetupID string, userID string) (*models.Invitation, error) {
+func (r *InvitationRepo) InviteUser(meetupID string, userID string) (invitation *models.Invitation, err error) {
 	if r.DB == nil {
 		log.Fatal("💥 r.DB is nil in InviteUser")
 	}
 	var id string
 
-	meetupId, err := strconv.ParseInt(meetupID, 10, 64)
-	if err != nil {
-		// handle the error
-		fmt.Println("Conversion failed:", err)
-	}
-	userId, err := strconv.ParseInt(userID, 10, 64)
-	if err != nil {
-		// handle the error
-		fmt.Println("Conversion failed:", err)
-	}
+	// meetupId, err := strconv.ParseInt(meetupID, 10, 64)
+	// if err != nil {
+	// 	// handle the error
+	// 	fmt.Println("Conversion failed:", err)
+	// }
+	// // userId, err := strconv.ParseInt(userID, 10, 64)
+	// if err != nil {
+	// 	// handle the error
+	// 	fmt.Println("Conversion failed:", err)
+	// }
 
 	//! Insert and get back the generated ID (assuming it's UUID or SERIAL stored as string)
 	_, err = r.DB.QueryOne(
 		pg.Scan(&id),
 		`INSERT INTO meetup_invitations (meetup_id, user_id, status)
 		 VALUES (?, ?, ?) RETURNING id`,
-		meetupId,
-		userId,
+		meetupID,
+		userID,
 		"pending",
 	)
 	if err != nil {
@@ -82,13 +82,13 @@ func (r *InvitationRepo) InviteUser(meetupID string, userID string) (*models.Inv
 	// Optionally: fetch user and meetup if you want them populated in the response
 	// Or just set minimal structs if only IDs are needed
 
-	invitation := &models.Invitation{
+	invitation = &models.Invitation{
 		ID:     id,
 		Status: models.InvitationStatus("pending"), // cast if needed
 		// 	MeetupID: &models.Meetup{ID: meetupID},       //* lightweight reference
 		// 	UserID:   &models.User{ID: userID},           //* lightweight reference
-		MeetupID: meetupId,
-		UserID:   userId,
+		MeetupID: meetupID,
+		UserID:   userID,
 	}
 
 	return invitation, nil
@@ -132,7 +132,7 @@ func (r *InvitationRepo) GetInvitedUsersByMeetupID(meetupID string) ([]*models.U
 	}
 
 	// collect user IDs
-	var userIDs []int64
+	var userIDs []string
 	for _, inv := range invitations {
 		userIDs = append(userIDs, inv.UserID)
 	}

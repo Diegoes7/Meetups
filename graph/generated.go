@@ -77,6 +77,7 @@ type ComplexityRoot struct {
 	}
 
 	MeetupUpdate struct {
+		Closed     func(childComplexity int) int
 		MeetupID   func(childComplexity int) int
 		NewMessage func(childComplexity int) int
 		Started    func(childComplexity int) int
@@ -85,27 +86,33 @@ type ComplexityRoot struct {
 	Message struct {
 		Content   func(childComplexity int) int
 		ID        func(childComplexity int) int
+		MeetupID  func(childComplexity int) int
 		Sender    func(childComplexity int) int
+		SenderID  func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 	}
 
 	Mutation struct {
-		CloseMeetup  func(childComplexity int, meetupID string) int
-		CreateMeetup func(childComplexity int, input models.NewMeetup) int
-		DeleteMeetup func(childComplexity int, id string) int
-		Dummy        func(childComplexity int) int
-		InviteUser   func(childComplexity int, input models.InviteUserInput) int
-		Login        func(childComplexity int, input models.LoginInput) int
-		Logout       func(childComplexity int, userID string) int
-		Register     func(childComplexity int, input *models.RegisterArgs) int
-		RemoveUser   func(childComplexity int, input models.InviteUserInput, loginUserID string) int
-		StartMeetup  func(childComplexity int, meetupID string) int
-		UpdateMeetup func(childComplexity int, id string, input models.UpdateMeetup) int
+		CloseMeetup   func(childComplexity int, meetupID string) int
+		CreateMeetup  func(childComplexity int, input models.NewMeetup) int
+		DeleteMeetup  func(childComplexity int, id string) int
+		DeleteMessage func(childComplexity int, messageID string) int
+		Dummy         func(childComplexity int) int
+		EditMessage   func(childComplexity int, input models.UpdateMessageInput) int
+		InviteUser    func(childComplexity int, input models.InviteUserInput) int
+		Login         func(childComplexity int, input models.LoginInput) int
+		Logout        func(childComplexity int, userID string) int
+		Register      func(childComplexity int, input *models.RegisterArgs) int
+		RemoveUser    func(childComplexity int, input models.InviteUserInput, loginUserID string) int
+		SendMessage   func(childComplexity int, input models.NewMessageInput) int
+		StartMeetup   func(childComplexity int, meetupID string) int
+		UpdateMeetup  func(childComplexity int, id string, input models.UpdateMeetup) int
 	}
 
 	Query struct {
 		Dummy                 func(childComplexity int) int
 		GetMeetupUsersInvited func(childComplexity int, meetupID string) int
+		GetMessagesByMeetup   func(childComplexity int, meetupID string, limit *int32, offset *int32) int
 		Me                    func(childComplexity int) int
 		Meetup                func(childComplexity int, meetupID string) int
 		Meetups               func(childComplexity int, filter *models.MeetupsFilter, limit *int32, offset *int32) int
@@ -147,6 +154,9 @@ type MutationResolver interface {
 	InviteUser(ctx context.Context, input models.InviteUserInput) (*models.User, error)
 	RemoveUser(ctx context.Context, input models.InviteUserInput, loginUserID string) (*models.User, error)
 	CloseMeetup(ctx context.Context, meetupID string) (bool, error)
+	SendMessage(ctx context.Context, input models.NewMessageInput) (*models.Message, error)
+	EditMessage(ctx context.Context, input models.UpdateMessageInput) (*models.Message, error)
+	DeleteMessage(ctx context.Context, messageID string) (bool, error)
 	Register(ctx context.Context, input *models.RegisterArgs) (*models.AuthResponse, error)
 	Login(ctx context.Context, input models.LoginInput) (*models.AuthResponse, error)
 	Logout(ctx context.Context, userID string) (*models.User, error)
@@ -156,6 +166,7 @@ type QueryResolver interface {
 	Meetups(ctx context.Context, filter *models.MeetupsFilter, limit *int32, offset *int32) ([]*models.Meetup, error)
 	GetMeetupUsersInvited(ctx context.Context, meetupID string) ([]*models.User, error)
 	Meetup(ctx context.Context, meetupID string) (*models.Meetup, error)
+	GetMessagesByMeetup(ctx context.Context, meetupID string, limit *int32, offset *int32) ([]*models.Message, error)
 	User(ctx context.Context, id string) (*models.User, error)
 	Users(ctx context.Context) ([]*models.User, error)
 	Me(ctx context.Context) (*models.User, error)
@@ -271,6 +282,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Meetup.User(childComplexity), true
 
+	case "MeetupUpdate.closed":
+		if e.complexity.MeetupUpdate.Closed == nil {
+			break
+		}
+
+		return e.complexity.MeetupUpdate.Closed(childComplexity), true
+
 	case "MeetupUpdate.meetupId":
 		if e.complexity.MeetupUpdate.MeetupID == nil {
 			break
@@ -306,12 +324,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Message.ID(childComplexity), true
 
+	case "Message.meetupID":
+		if e.complexity.Message.MeetupID == nil {
+			break
+		}
+
+		return e.complexity.Message.MeetupID(childComplexity), true
+
 	case "Message.sender":
 		if e.complexity.Message.Sender == nil {
 			break
 		}
 
 		return e.complexity.Message.Sender(childComplexity), true
+
+	case "Message.senderID":
+		if e.complexity.Message.SenderID == nil {
+			break
+		}
+
+		return e.complexity.Message.SenderID(childComplexity), true
 
 	case "Message.timestamp":
 		if e.complexity.Message.Timestamp == nil {
@@ -356,12 +388,36 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteMeetup(childComplexity, args["id"].(string)), true
 
+	case "Mutation.deleteMessage":
+		if e.complexity.Mutation.DeleteMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteMessage(childComplexity, args["messageID"].(string)), true
+
 	case "Mutation._dummy":
 		if e.complexity.Mutation.Dummy == nil {
 			break
 		}
 
 		return e.complexity.Mutation.Dummy(childComplexity), true
+
+	case "Mutation.editMessage":
+		if e.complexity.Mutation.EditMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditMessage(childComplexity, args["input"].(models.UpdateMessageInput)), true
 
 	case "Mutation.inviteUser":
 		if e.complexity.Mutation.InviteUser == nil {
@@ -423,6 +479,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveUser(childComplexity, args["input"].(models.InviteUserInput), args["loginUserID"].(string)), true
 
+	case "Mutation.sendMessage":
+		if e.complexity.Mutation.SendMessage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_sendMessage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SendMessage(childComplexity, args["input"].(models.NewMessageInput)), true
+
 	case "Mutation.startMeetup":
 		if e.complexity.Mutation.StartMeetup == nil {
 			break
@@ -465,6 +533,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetMeetupUsersInvited(childComplexity, args["meetupID"].(string)), true
+
+	case "Query.getMessagesByMeetup":
+		if e.complexity.Query.GetMessagesByMeetup == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getMessagesByMeetup_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetMessagesByMeetup(childComplexity, args["meetupID"].(string), args["limit"].(*int32), args["offset"].(*int32)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -617,8 +697,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputMeetupsFilter,
 		ec.unmarshalInputNewMeetup,
+		ec.unmarshalInputNewMessageInput,
 		ec.unmarshalInputRegisterArgs,
 		ec.unmarshalInputUpdateMeetup,
+		ec.unmarshalInputUpdateMessageInput,
 	)
 	first := true
 
@@ -823,6 +905,52 @@ func (ec *executionContext) field_Mutation_deleteMeetup_argsID(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteMessage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_deleteMessage_argsMessageID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["messageID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_deleteMessage_argsMessageID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("messageID"))
+	if tmp, ok := rawArgs["messageID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_editMessage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_editMessage_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_editMessage_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (models.UpdateMessageInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateMessageInput2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐUpdateMessageInput(ctx, tmp)
+	}
+
+	var zeroVal models.UpdateMessageInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_inviteUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -956,6 +1084,29 @@ func (ec *executionContext) field_Mutation_removeUser_argsLoginUserID(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_sendMessage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_sendMessage_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_sendMessage_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (models.NewMessageInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNNewMessageInput2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐNewMessageInput(ctx, tmp)
+	}
+
+	var zeroVal models.NewMessageInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_startMeetup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1063,6 +1214,65 @@ func (ec *executionContext) field_Query_getMeetupUsersInvited_argsMeetupID(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_getMessagesByMeetup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_getMessagesByMeetup_argsMeetupID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["meetupID"] = arg0
+	arg1, err := ec.field_Query_getMessagesByMeetup_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	arg2, err := ec.field_Query_getMessagesByMeetup_argsOffset(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Query_getMessagesByMeetup_argsMeetupID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("meetupID"))
+	if tmp, ok := rawArgs["meetupID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_getMessagesByMeetup_argsLimit(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int32, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		return ec.unmarshalOInt2ᚖint32(ctx, tmp)
+	}
+
+	var zeroVal *int32
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_getMessagesByMeetup_argsOffset(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int32, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+	if tmp, ok := rawArgs["offset"]; ok {
+		return ec.unmarshalOInt2ᚖint32(ctx, tmp)
+	}
+
+	var zeroVal *int32
 	return zeroVal, nil
 }
 
@@ -1906,6 +2116,50 @@ func (ec *executionContext) fieldContext_MeetupUpdate_started(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _MeetupUpdate_closed(ctx context.Context, field graphql.CollectedField, obj *models.MeetupUpdate) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MeetupUpdate_closed(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Closed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MeetupUpdate_closed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MeetupUpdate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MeetupUpdate_newMessage(ctx context.Context, field graphql.CollectedField, obj *models.MeetupUpdate) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_MeetupUpdate_newMessage(ctx, field)
 	if err != nil {
@@ -1944,12 +2198,16 @@ func (ec *executionContext) fieldContext_MeetupUpdate_newMessage(_ context.Conte
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Message_id(ctx, field)
-			case "sender":
-				return ec.fieldContext_Message_sender(ctx, field)
+			case "senderID":
+				return ec.fieldContext_Message_senderID(ctx, field)
+			case "meetupID":
+				return ec.fieldContext_Message_meetupID(ctx, field)
 			case "content":
 				return ec.fieldContext_Message_content(ctx, field)
 			case "timestamp":
 				return ec.fieldContext_Message_timestamp(ctx, field)
+			case "sender":
+				return ec.fieldContext_Message_sender(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Message", field.Name)
 		},
@@ -2001,8 +2259,8 @@ func (ec *executionContext) fieldContext_Message_id(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Message_sender(ctx context.Context, field graphql.CollectedField, obj *models.Message) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Message_sender(ctx, field)
+func (ec *executionContext) _Message_senderID(ctx context.Context, field graphql.CollectedField, obj *models.Message) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Message_senderID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -2015,7 +2273,7 @@ func (ec *executionContext) _Message_sender(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Sender, nil
+		return obj.SenderID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2027,37 +2285,63 @@ func (ec *executionContext) _Message_sender(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*models.User)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐUser(ctx, field.Selections, res)
+	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Message_sender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Message_senderID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Message",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "username":
-				return ec.fieldContext_User_username(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "firstName":
-				return ec.fieldContext_User_firstName(ctx, field)
-			case "lastName":
-				return ec.fieldContext_User_lastName(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
-			case "meetups":
-				return ec.fieldContext_User_meetups(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Message_meetupID(ctx context.Context, field graphql.CollectedField, obj *models.Message) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Message_meetupID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MeetupID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Message_meetupID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Message",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2146,6 +2430,68 @@ func (ec *executionContext) fieldContext_Message_timestamp(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Message_sender(ctx context.Context, field graphql.CollectedField, obj *models.Message) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Message_sender(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Sender, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Message_sender(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Message",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "firstName":
+				return ec.fieldContext_User_firstName(ctx, field)
+			case "lastName":
+				return ec.fieldContext_User_lastName(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "meetups":
+				return ec.fieldContext_User_meetups(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
 	}
 	return fc, nil
@@ -2633,6 +2979,199 @@ func (ec *executionContext) fieldContext_Mutation_closeMeetup(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_sendMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_sendMessage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().SendMessage(rctx, fc.Args["input"].(models.NewMessageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.Message)
+	fc.Result = res
+	return ec.marshalNMessage2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_sendMessage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Message_id(ctx, field)
+			case "senderID":
+				return ec.fieldContext_Message_senderID(ctx, field)
+			case "meetupID":
+				return ec.fieldContext_Message_meetupID(ctx, field)
+			case "content":
+				return ec.fieldContext_Message_content(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Message_timestamp(ctx, field)
+			case "sender":
+				return ec.fieldContext_Message_sender(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Message", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_sendMessage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_editMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_editMessage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditMessage(rctx, fc.Args["input"].(models.UpdateMessageInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.Message)
+	fc.Result = res
+	return ec.marshalNMessage2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessage(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_editMessage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Message_id(ctx, field)
+			case "senderID":
+				return ec.fieldContext_Message_senderID(ctx, field)
+			case "meetupID":
+				return ec.fieldContext_Message_meetupID(ctx, field)
+			case "content":
+				return ec.fieldContext_Message_content(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Message_timestamp(ctx, field)
+			case "sender":
+				return ec.fieldContext_Message_sender(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Message", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_editMessage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteMessage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteMessage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteMessage(rctx, fc.Args["messageID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteMessage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteMessage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_register(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_register(ctx, field)
 	if err != nil {
@@ -3066,6 +3605,75 @@ func (ec *executionContext) fieldContext_Query_meetup(ctx context.Context, field
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_meetup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getMessagesByMeetup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getMessagesByMeetup(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetMessagesByMeetup(rctx, fc.Args["meetupID"].(string), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.Message)
+	fc.Result = res
+	return ec.marshalNMessage2ᚕᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessageᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getMessagesByMeetup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Message_id(ctx, field)
+			case "senderID":
+				return ec.fieldContext_Message_senderID(ctx, field)
+			case "meetupID":
+				return ec.fieldContext_Message_meetupID(ctx, field)
+			case "content":
+				return ec.fieldContext_Message_content(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Message_timestamp(ctx, field)
+			case "sender":
+				return ec.fieldContext_Message_sender(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Message", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getMessagesByMeetup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3516,6 +4124,8 @@ func (ec *executionContext) fieldContext_Subscription_meetupUpdates(ctx context.
 				return ec.fieldContext_MeetupUpdate_meetupId(ctx, field)
 			case "started":
 				return ec.fieldContext_MeetupUpdate_started(ctx, field)
+			case "closed":
+				return ec.fieldContext_MeetupUpdate_closed(ctx, field)
 			case "newMessage":
 				return ec.fieldContext_MeetupUpdate_newMessage(ctx, field)
 			}
@@ -5888,6 +6498,40 @@ func (ec *executionContext) unmarshalInputNewMeetup(ctx context.Context, obj any
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputNewMessageInput(ctx context.Context, obj any) (models.NewMessageInput, error) {
+	var it models.NewMessageInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"meetupID", "content"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "meetupID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("meetupID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MeetupID = data
+		case "content":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Content = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRegisterArgs(ctx context.Context, obj any) (models.RegisterArgs, error) {
 	var it models.RegisterArgs
 	asMap := map[string]any{}
@@ -5978,6 +6622,40 @@ func (ec *executionContext) unmarshalInputUpdateMeetup(ctx context.Context, obj 
 				return it, err
 			}
 			it.Description = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateMessageInput(ctx context.Context, obj any) (models.UpdateMessageInput, error) {
+	var it models.UpdateMessageInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"messageID", "content"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "messageID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("messageID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MessageID = data
+		case "content":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Content = data
 		}
 	}
 
@@ -6240,6 +6918,11 @@ func (ec *executionContext) _MeetupUpdate(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "closed":
+			out.Values[i] = ec._MeetupUpdate_closed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "newMessage":
 			out.Values[i] = ec._MeetupUpdate_newMessage(ctx, field, obj)
 		default:
@@ -6281,8 +6964,13 @@ func (ec *executionContext) _Message(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "sender":
-			out.Values[i] = ec._Message_sender(ctx, field, obj)
+		case "senderID":
+			out.Values[i] = ec._Message_senderID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "meetupID":
+			out.Values[i] = ec._Message_meetupID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -6293,6 +6981,11 @@ func (ec *executionContext) _Message(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "timestamp":
 			out.Values[i] = ec._Message_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sender":
+			out.Values[i] = ec._Message_sender(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -6387,6 +7080,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "closeMeetup":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_closeMeetup(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sendMessage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_sendMessage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "editMessage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_editMessage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteMessage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteMessage(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -6527,6 +7241,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_meetup(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getMessagesByMeetup":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getMessagesByMeetup(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -7291,8 +8027,71 @@ func (ec *executionContext) marshalNMeetupUpdate2ᚖgithubᚗcomᚋDiegoes7ᚋme
 	return ec._MeetupUpdate(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNMessage2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessage(ctx context.Context, sel ast.SelectionSet, v models.Message) graphql.Marshaler {
+	return ec._Message(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMessage2ᚕᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Message) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMessage2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessage(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMessage2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMessage(ctx context.Context, sel ast.SelectionSet, v *models.Message) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Message(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNNewMeetup2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐNewMeetup(ctx context.Context, v any) (models.NewMeetup, error) {
 	res, err := ec.unmarshalInputNewMeetup(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNNewMessageInput2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐNewMessageInput(ctx context.Context, v any) (models.NewMessageInput, error) {
+	res, err := ec.unmarshalInputNewMessageInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -7342,6 +8141,11 @@ func (ec *executionContext) marshalNTimeUnix2ᚖgithubᚗcomᚋDiegoes7ᚋmeetup
 
 func (ec *executionContext) unmarshalNUpdateMeetup2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐUpdateMeetup(ctx context.Context, v any) (models.UpdateMeetup, error) {
 	res, err := ec.unmarshalInputUpdateMeetup(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateMessageInput2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐUpdateMessageInput(ctx context.Context, v any) (models.UpdateMessageInput, error) {
+	res, err := ec.unmarshalInputUpdateMessageInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

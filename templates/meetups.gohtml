@@ -1,33 +1,135 @@
 {{ define "meetups" }}
-<section>
-    <h2>Meetups</h2>
-    <ul>
-        {{ range .Meetups }}
-        <li>
-            {{ .Name }}  
-            <button onclick="startMeetup({{ .ID }})">Start Meetup</button>
-        </li>
-        {{ end }}
-    </ul>
+<ol>
+	{{
+		range.Meetups
+	}}
+	<li class="meetup">
+		<div
+			style="display: flex; justify-content: space-between; align-items: center"
+		>
+			<span
+				><strong>{{ .Name }}</strong></span
+			>
+			<button onclick="goToMeetup('{{ .ID }}')">Enter</button>
+		</div>
+		<div>
+			<span>Info: {{ .Description }}</span>
+			<button class="delete_button" onclick="deleteMeetup('{{ .ID }}')">
+				Delete
+			</button>
+		</div>
+	</li>
+	{{
+		end
+	}}
+</ol>
+<script>
+	async function fetchData() {
+		fetch('http://localhost:8080/query', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				query: `{
+                   meetups {
+                       id
+                       name
+                       description
+                   }
+                   users {
+                       id
+                       username
+                       email
+                       firstName
+	                     lastName
+                   }
+               }`,
+			}),
+		})
+			.then((response) => {
+				if (!response.ok) {
+					throw new Error('Network response was not ok');
+				}
+				return response.json();
+			})
+			.then((data) => {
+				// Ensure data contains 'meetups' and 'users'
+				if (data.data) {
+					// Display meetups
+					let meetupsHTML = '';
+					data.data.meetups.forEach((meetup) => {
+						meetupsHTML += ` <li class="meetup">
+  											  <div style="display: flex; justify-content: space-between; align-items: center;">
+  											    <span><strong>${meetup.name}</strong></span>
+  											    <button onclick="goToMeetup(${meetup.id})">Enter</button>
+														</div>
+														<div style="display: flex; justify-content: space-between; align-items: center;">
+															<span>Info: ${meetup.description}</span>
+															<button class="delete_button" onclick="deleteMeetup('${meetup.id}')">Delete</button>
+													  </div>
+  											</li>`;
+					});
+					document.getElementById('meetups').innerHTML = meetupsHTML;
 
-    <script>
-        async function fetchMeetups() {
-            const response = await fetch("/api/meetups");
-            const meetups = await response.json();
-            const list = document.getElementById("meetups-list");
+					// Display users
+					let usersHTML = '';
+					data.data.users.forEach((user) => {
+						usersHTML += `<li><p>${user.username}, ${user.email}, ${user.firstName}, ${user.lastName}</p></li>`;
+					});
+					document.getElementById('users').innerHTML = usersHTML;
+				} else {
+					throw new Error('Invalid response structure');
+				}
+			})
+			.catch((error) => console.error('Error:', error));
+	}
 
-            meetups.forEach(meetup => {
-                let li = document.createElement("li");
-                li.innerHTML = `${meetup.name} <button onclick="startMeetup(${meetup.id})">Start Meetup</button>`;
-                list.appendChild(li);
-            });
-        }
+	// Navigate to active meetup page
+	function goToMeetup(meetupId) {
+		window.location.href = `/meetup/${meetupId}`;
+	}
 
-        function startMeetup(meetupId) {
-            window.location.href = "/meetup/" + meetupId;
-        }
+	async function deleteMeetup(meetupId) {
+		if (!confirm('Are you sure you want to delete this meetup?')) {
+			return;
+		}
 
-        fetchMeetups();
-    </script>
-</section>
+		try {
+			const response = await fetch('http://localhost:8080/query', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					query: `
+          mutation {
+            deleteMeetup(id: "${meetupId}")
+          }
+        `,
+				}),
+			});
+
+			const result = await response.json();
+
+			if (result.data?.deleteMeetup) {
+				alert('Meetup deleted successfully.');
+				await fetchData(); // Refresh list
+			} else {
+				const errorMessage =
+					result.errors?.[0]?.message || 'Failed to delete meetup.';
+				throw new Error(errorMessage);
+			}
+		} catch (err) {
+			console.error('Error deleting meetup:', err.message);
+			alert('Error deleting meetup: ' + err.message);
+		}
+	}
+
+	window.onload = async function () {
+		// Call your other fetch data function
+		await fetchData();
+		await checkSession();
+	};
+</script>
 {{ end }}

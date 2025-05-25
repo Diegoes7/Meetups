@@ -61,7 +61,7 @@ func (r *mutationResolver) InviteUser(ctx context.Context, input models.InviteUs
 	// Check if already invited
 	alreadyInvited, _ := r.Domain.InvitationRepo.IsUserInvited(input.MeetupID, input.UserID)
 	if alreadyInvited {
-		log.Printf("🚫 user already invited: meetupID=%d userID=%d", input.MeetupID, input.UserID)
+		log.Printf("Coworker already invited: meetupID=%s userID=%s", input.MeetupID, input.UserID)
 		return nil, fmt.Errorf("user already invited to this meetup")
 	}
 
@@ -71,7 +71,7 @@ func (r *mutationResolver) InviteUser(ctx context.Context, input models.InviteUs
 		return nil, fmt.Errorf("failed to invite user: %w", err)
 	}
 
-	// ✅ Return the invited user object
+	// Return the invited user object
 	return user, nil
 }
 
@@ -89,8 +89,7 @@ func (r *mutationResolver) CloseMeetup(ctx context.Context, meetupID string) (bo
 
 	// System message for closing
 	systemMessage := &models.Message{
-		ID:        "system",                         // or generate a UUID if needed
-		Sender:    &models.User{Username: "system"}, // minimal system sender
+		ID:        "system", // or generate a UUID if needed
 		Content:   "Meetup has been closed by the host.",
 		Timestamp: time.Now(),
 	}
@@ -107,6 +106,21 @@ func (r *mutationResolver) CloseMeetup(ctx context.Context, meetupID string) (bo
 	return true, nil
 }
 
+// SendMessage is the resolver for the sendMessage field.
+func (r *mutationResolver) SendMessage(ctx context.Context, input models.NewMessageInput) (*models.Message, error) {
+	return r.Domain.SendMessage(ctx, input)
+}
+
+// EditMessage is the resolver for the editMessage field.
+func (r *mutationResolver) EditMessage(ctx context.Context, input models.UpdateMessageInput) (*models.Message, error) {
+	return r.Domain.EditMessage(ctx, input)
+}
+
+// DeleteMessage is the resolver for the deleteMessage field.
+func (r *mutationResolver) DeleteMessage(ctx context.Context, messageID string) (bool, error) {
+	return r.Domain.DeleteMessage(ctx, messageID)
+}
+
 // Meetups is the resolver for the meetups field.
 func (r *queryResolver) Meetups(ctx context.Context, filter *models.MeetupsFilter, limit *int32, offset *int32) ([]*models.Meetup, error) {
 	return r.Domain.MeetupRepo.GetMeetups(filter, limit, offset)
@@ -120,6 +134,11 @@ func (r *queryResolver) GetMeetupUsersInvited(ctx context.Context, meetupID stri
 // Meetup is the resolver for the meetup field.
 func (r *queryResolver) Meetup(ctx context.Context, meetupID string) (*models.Meetup, error) {
 	return r.Domain.MeetupRepo.GetMeetup(meetupID)
+}
+
+// GetMessagesByMeetup is the resolver for the getMessagesByMeetup field.
+func (r *queryResolver) GetMessagesByMeetup(ctx context.Context, meetupID string, limit *int32, offset *int32) ([]*models.Message, error) {
+	return r.Domain.MessageRepo.GetMessagesByMeetup(meetupID, limit, offset)
 }
 
 // Meetup returns MeetupResolver implementation.

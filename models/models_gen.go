@@ -10,9 +10,10 @@ import (
 )
 
 type Invitation struct {
+	tableName struct{} `pg:"meetup_invitations"`
 	ID       string           `json:"ID"`
-	MeetupID int64           `json:"MeetupID"`
-	UserID   int64           `json:"UserID"`
+	MeetupID string           `json:"MeetupID"`
+	UserID   string           `json:"UserID"`
 	Status   InvitationStatus `json:"Status"`
 }
 
@@ -29,7 +30,7 @@ type LoginInput struct {
 type MeetupUpdate struct {
 	MeetupID   string   `json:"meetupId"`
 	Started    bool     `json:"started"`
-	Closed    bool     `json:"started"`
+	Closed     bool     `json:"closed"`
 	NewMessage *Message `json:"newMessage,omitempty"`
 }
 
@@ -39,9 +40,12 @@ type MeetupsFilter struct {
 
 type Message struct {
 	ID        string    `json:"id"`
-	Sender    *User     `json:"sender"`
+	SenderID  string    `json:"senderID"`
+	MeetupID  string    `json:"meetupID"`
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
+	// Sender    *User     `json:"sender"`
+	 Sender    *User     `json:"sender" pg:"rel:has-one,fk:sender_id"` // Add pg tag for ORM to join
 }
 
 type Mutation struct {
@@ -50,6 +54,11 @@ type Mutation struct {
 type NewMeetup struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+type NewMessageInput struct {
+	MeetupID string `json:"meetupID"`
+	Content  string `json:"content"`
 }
 
 type Query struct {
@@ -75,6 +84,11 @@ type TimeUnix struct {
 type UpdateMeetup struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+}
+
+type UpdateMessageInput struct {
+	MessageID string `json:"messageID"`
+	Content   string `json:"content"`
 }
 
 type InvitationStatus string

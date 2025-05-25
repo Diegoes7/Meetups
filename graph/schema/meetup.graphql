@@ -37,10 +37,27 @@ input InviteUserInput {
 	userID: ID!
 }
 
+input NewMessageInput {
+	meetupID: ID!
+	content: String!
+	# user: User!
+}
+
+input UpdateMessageInput {
+	messageID: ID!
+	content: String!
+}
+
 extend type Query {
 	meetups(filter: MeetupsFilter, limit: Int = 10, offset: Int = 0): [Meetup!]!
 	getMeetupUsersInvited(meetupID: ID!): [User!]!
 	meetup(meetupID: ID!): Meetup!
+
+	getMessagesByMeetup(
+		meetupID: ID!
+		limit: Int = 50
+		offset: Int = 0
+	): [Message!]!
 }
 
 extend type Mutation {
@@ -53,4 +70,9 @@ extend type Mutation {
 	inviteUser(input: InviteUserInput!): User!
 	removeUser(input: InviteUserInput!, loginUserID: ID!): User!
 	closeMeetup(meetupID: ID!): Boolean!
+
+	#! messages
+	sendMessage(input: NewMessageInput!): Message!
+	editMessage(input: UpdateMessageInput!): Message!
+	deleteMessage(messageID: ID!): Boolean!
 }

@@ -1,4 +1,4 @@
-// static/js/util.js
+// static route
 
 // Enables Enter key to trigger the button click
 export function enableEnterKeyAction(inputSelector, buttonSelector) {

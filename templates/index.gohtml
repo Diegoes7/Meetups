@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/png" href="/templates/static/ai_agent.png" />
 		<style>
 			body {
 			}
@@ -53,7 +54,7 @@
 				color: white;
 				border: none;
 				padding: 0.4em 0.8em;
-				margin-left: 0.5em;
+				/* margin-left: 0.5em; */
 				border-radius: 4px;
 				cursor: pointer;
 				font-weight: bold;
@@ -70,7 +71,7 @@
 				border: none;
 				border-radius: 0.3em;
 				cursor: pointer;
-				margin-top: 1em;
+				margin-top: 0.5em;
 				cursor: pointer;
 				text-decoration: none;
 			}
@@ -96,9 +97,11 @@
 				padding: 0.4em;
 			}
 			.meetup {
+				display: flex;
+				justify-content: space-between;
 				margin-bottom: 1em;
 				border: 1px solid #d7c4c4;
-				padding: 0 0.5em 8px 1em;
+				padding: 0.75em 0.5em 0.75em 1em;
 				border-radius: 4px;
 			}
 		</style>
@@ -132,6 +135,7 @@
 						document.getElementById('lastName').textContent = user.lastName;
 						document.getElementById('userInfo').style.display = 'block';
 						document.getElementById('logout_btn').style.display = 'block';
+
 					}
 				} catch (error) {
 					console.warn(error.message);

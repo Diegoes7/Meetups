@@ -80,6 +80,11 @@ func (r *mutationResolver) RemoveUser(ctx context.Context, input models.InviteUs
 	return r.Domain.RemoveUserFromMeetup(ctx, input, loginUserID)
 }
 
+// LeaveMeetup is the resolver for the leaveMeetup field.
+func (r *mutationResolver) LeaveMeetup(ctx context.Context, meetupID string) (bool, error) {
+	return r.Domain.LeaveMeetup(ctx, meetupID)
+}
+
 // CloseMeetup is the resolver for the closeMeetup field.
 func (r *mutationResolver) CloseMeetup(ctx context.Context, meetupID string) (bool, error) {
 	if !SubManager.IsActive(meetupID) {
@@ -106,21 +111,6 @@ func (r *mutationResolver) CloseMeetup(ctx context.Context, meetupID string) (bo
 	return true, nil
 }
 
-// SendMessage is the resolver for the sendMessage field.
-func (r *mutationResolver) SendMessage(ctx context.Context, input models.NewMessageInput) (*models.Message, error) {
-	return r.Domain.SendMessage(ctx, input)
-}
-
-// EditMessage is the resolver for the editMessage field.
-func (r *mutationResolver) EditMessage(ctx context.Context, input models.UpdateMessageInput) (*models.Message, error) {
-	return r.Domain.EditMessage(ctx, input)
-}
-
-// DeleteMessage is the resolver for the deleteMessage field.
-func (r *mutationResolver) DeleteMessage(ctx context.Context, messageID string) (bool, error) {
-	return r.Domain.DeleteMessage(ctx, messageID)
-}
-
 // Meetups is the resolver for the meetups field.
 func (r *queryResolver) Meetups(ctx context.Context, filter *models.MeetupsFilter, limit *int32, offset *int32) ([]*models.Meetup, error) {
 	return r.Domain.MeetupRepo.GetMeetups(filter, limit, offset)
@@ -134,11 +124,6 @@ func (r *queryResolver) GetMeetupUsersInvited(ctx context.Context, meetupID stri
 // Meetup is the resolver for the meetup field.
 func (r *queryResolver) Meetup(ctx context.Context, meetupID string) (*models.Meetup, error) {
 	return r.Domain.MeetupRepo.GetMeetup(meetupID)
-}
-
-// GetMessagesByMeetup is the resolver for the getMessagesByMeetup field.
-func (r *queryResolver) GetMessagesByMeetup(ctx context.Context, meetupID string, limit *int32, offset *int32) ([]*models.Message, error) {
-	return r.Domain.MessageRepo.GetMessagesByMeetup(meetupID, limit, offset)
 }
 
 // Meetup returns MeetupResolver implementation.

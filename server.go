@@ -96,8 +96,10 @@ func main() {
 	// Initialize the SubscriptionManager
 	graph.SubManager = graph.NewSubscriptionManager()
 
-	//! static files
-	http.Handle("/helper/", http.StripPrefix("/helper/", http.FileServer(http.Dir("./templates"))))
+	//! Serve template-specific JS files
+	router.Handle("/templates/static/*",
+		http.StripPrefix("/templates/static/",
+			http.FileServer(http.Dir("templates/static"))))
 
 	//! Serve HTML on "/"
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -179,8 +181,8 @@ func main() {
 	router.Handle("/query", loader.DataLoaderMiddleware(DB, queryHandler))
 	// http.Handle("/query", handler.GraphQL(graph.NewExecutableSchema(c)))
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Printf("connect to http://localhost:%s/ for GraphQL actual website", port)
+	log.Printf("connect to http://localhost:%s/playground for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 

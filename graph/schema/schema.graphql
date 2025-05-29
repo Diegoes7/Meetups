@@ -14,6 +14,7 @@ type AuthResponse {
 
 type Query {
 	_dummy: String # Placeholder field (can be deleted later)
+	participableMeetups: [Meetup!]!
 }
 
 type Mutation {
@@ -40,18 +41,3 @@ type MeetupUpdate {
 	newMessage: Message
 }
 
-# type Message {
-# 	id: ID!
-# 	sender: User!
-# 	content: String!
-# 	timestamp: Time!
-# }
-
-type Message {
-	id: ID!
-	senderID: ID!
-	meetupID: ID!
-	content: String!
-	timestamp: Time!
-	sender: User! # 👈 querying user info from a message
-}

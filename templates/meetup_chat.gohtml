@@ -37,6 +37,12 @@
 						button:hover {
 							background-color: #0056b3;
 						}
+						button:disabled {
+							background-color: #ccc !important;
+							color: #666;
+							cursor: not-allowed;
+							opacity: 0.6;
+						}
 						#message-list {
 							list-style-type: none;
 							padding: 0;
@@ -129,22 +135,711 @@
 		</style>
 		<title>Active Meetup</title>
 	</head>
+	<script type="module">
+		import { formatTimestamp } from '/templates/static/utils.js';
+		import { handleDelete, handleEdit } from '/templates/static/chat.js';
+		import { leaveMeetup } from '/templates/static/meetup.js';
+		console.log(formatTimestamp(Date.now()));
+
+		let CURRENT_USER = null;
+		let CURRENT_MEETUP = null;
+
+		async function checkSession() {
+			const response = await fetch('/me');
+
+			if (response.ok) {
+				const authUser = await response.json();
+				CURRENT_USER = authUser; // store globally
+				return authUser;
+			}
+
+			alert('No authenticated user');
+			return null;
+		}
+
+		function renderInvitedUser(user) {
+			const invitedList = document.getElementById('invited-users');
+			const li = document.createElement('li');
+			li.innerHTML = `${user.username} (${user.email})`;
+
+			if (CURRENT_USER.id === CURRENT_MEETUP.user.id) {
+				const btn = document.createElement('button');
+				btn.textContent = 'Remove';
+				btn.style.marginLeft = '1em';
+				btn.onclick = () => removeUser(user.id, btn);
+				li.appendChild(btn);
+			}
+
+			invitedList.appendChild(li);
+		}
+
+		async function getMeetupByID(meetupID) {
+			const query = `
+						query GetMeetup($id: ID!) {
+							meetup(meetupID: $id) {
+								id
+								name
+								description
+								  user {
+		      					id
+										username
+		    				}
+							}
+						}
+									`;
+
+			const variables = { id: meetupID };
+
+			const response = await fetch('/query', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ query, variables }),
+			});
+
+			const result = await response.json();
+
+			if (result.errors) {
+				console.error('Failed to fetch meetup:', result.errors[0].message);
+				return null;
+			}
+
+			return result.data.meetup;
+		}
+
+		async function fetchUsers() {
+			const response = await fetch('/api/users');
+			const users = await response.json();
+			const select = document.getElementById('user-select');
+
+			// Clear previous entries
+			select.innerHTML = '';
+
+			users.forEach((user) => {
+				// Skip if user is the owner
+				if (user.id === CURRENT_MEETUP.user.id) {
+					return;
+				}
+				document.getElementById('invite-modal').style.display = 'flex';
+				const option = document.createElement('option');
+				option.value = user.id;
+				option.textContent = user.name;
+				select.appendChild(option);
+			});
+		}
+
+		function invite() {
+			// Fetch and show users when "Invite coworkers" is clicked
+			fetchUsers();
+		}
+
+		async function submitInvite() {
+			const meetupId = '{{ .Meetup.ID }}';
+			const select = document.getElementById('user-select');
+			const userId = parseInt(select.value);
+
+			const query = `
+						mutation InviteUser($input: InviteUserInput!) {
+						  inviteUser(input: $input) {
+						   		id
+						    	username
+								email
+								firstName
+								lastName
+						  	}
+							}
+						`;
+
+			const variables = {
+				input: {
+					meetupID: meetupId,
+					userID: userId,
+				},
+			};
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+				console.log('Result:', result);
+				const invitedList = document.getElementById('invited-users');
+
+				renderInvitedUser(result.data.inviteUser);
+
+				if (result.errors) {
+					alert('Failed to invite user: ' + result.errors[0].message);
+				} else {
+					alert('User invited successfully.');
+					closeInviteModal();
+					// document.getElementById('invite-section').style.display = 'none';
+				}
+			} catch (err) {
+				console.error('Error:', err);
+				alert('Something went wrong.');
+			}
+		}
+
+		let socket;
+
+		document.addEventListener('DOMContentLoaded', () => {
+			document
+				.getElementById('send_button')
+				.addEventListener('click', sendMessage);
+		});
+
+		async function sendMessageToServer(message) {
+			const mutation = `
+							mutation SendMessage($input: NewMessageInput!) {
+								sendMessage(input: $input) {
+									id
+									content
+								}
+							}
+						`;
+
+			const variables = {
+				input: {
+					content: message,
+					meetupID: CURRENT_MEETUP.id,
+				},
+			};
+
+			const res = await fetch('/query', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ query: mutation, variables }),
+			});
+
+			const result = await res.json();
+			if (result.errors) {
+				alert('Failed to send message: ' + result.errors[0].message);
+				console.error(result.errors);
+				return false;
+			}
+
+			return result.data.sendMessage;
+		}
+
+		function sendMessageToSocket(message) {
+			if (socket && socket.readyState === WebSocket.OPEN) {
+				socket.send(
+					JSON.stringify({
+						// meetupId: '{{ .Meetup.ID }}',
+						meetupId: CURRENT_MEETUP.id,
+						message: message,
+					})
+				);
+				return true;
+			} else {
+				console.warn('WebSocket is not connected.');
+				return false;
+			}
+		}
+
+		async function sendMessage() {
+			const input = document.getElementById('message-input');
+			const message = input.value.trim();
+			if (!message) return;
+
+			// Call GraphQL mutation
+			const savedMessage = await sendMessageToServer(message);
+			if (!savedMessage) return;
+
+			// Send to WebSocket
+			sendMessageToSocket(message);
+
+			// Update the UI
+			const messageList = document.getElementById('message-list');
+			const li = document.createElement('li');
+			li.id = `message-${savedMessage.id}`; // Assign the ID
+			const content = `<div style='display: flex; align-items: center;'>
+		  							  <strong>You:</strong> ${savedMessage.content} sent: <span>${formatTimestamp(
+				new Date().toUTCString()
+			)}</span>
+		  							  <button class="edit-btn" data-id="${savedMessage.id}"
+											}')" title="Edit" style="background:none;border:none;cursor:pointer; margin:0;">✏️</button>
+		  							  <button class="delete-btn" data-id="${
+												savedMessage.id
+											}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0">🗑️</button>
+		  											</div>
+														`;
+			li.innerHTML = content;
+			messageList.appendChild(li);
+			input.value = '';
+		}
+
+		async function fetchMessages() {
+			const query = `
+						query GetMessages($meetupID: ID!) {
+							getMessagesByMeetup(meetupID: $meetupID) {
+								id
+								content
+								timestamp
+								sender {
+									id
+									username
+								}
+							}
+						}
+					`;
+
+			const res = await fetch('/query', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					query,
+					variables: { meetupID: CURRENT_MEETUP.id },
+				}),
+			});
+
+			const result = await res.json();
+			const messages = result.data?.getMessagesByMeetup || [];
+			const list = document.getElementById('message-list');
+			list.innerHTML = '';
+			messages.forEach((m) => {
+				const li = document.createElement('li');
+				li.id = `message-${m.id}`; // Assign the ID
+				const formatted = formatTimestamp(m.timestamp);
+				const chatter =
+					CURRENT_USER.id === m.sender.id
+						? `<div style='display: flex; align-items: center;'>
+		  				<strong>You:</strong> <span id="message-content-${m.id}">${m.content}</span> sent: <span>${formatted}</span>
+		  				<button class="edit-btn" data-id="${m.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0;">✏️</button>
+		  				<button class="delete-btn" data-id="${m.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0">🗑️</button>
+		  		</div>`
+						: `
+		  		<div style="padding-left:1em;">
+		  		  ${m.content} <strong>: ${m.sender.username}</strong> sent: <span>${formatted}</span>
+		  		</div>`;
+
+				li.innerHTML = chatter;
+				list.appendChild(li);
+			});
+		}
+
+		async function startMeetup() {
+			const meetupId = '{{ .Meetup.ID }}';
+
+			const query = `
+									mutation StartMeetup($meetupID: ID!) {
+										startMeetup(meetupID: $meetupID)
+
+									}
+								`;
+
+			const variables = {
+				meetupID: meetupId,
+			};
+
+			startConnection(); // only start socket after starting
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+				if (result.errors) {
+					console.error('Failed to start meetup:', result.errors);
+					alert('Failed to start meetup');
+				} else {
+					console.log('Meetup started');
+				}
+			} catch (err) {
+				console.error('Error starting meetup:', err);
+				alert('Something went wrong.');
+			}
+		}
+
+		function startConnection() {
+			if (!socket || socket.readyState === WebSocket.CLOSED) {
+				// Open the WebSocket connection when the button is clicked
+				socket = new WebSocket(
+					'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
+				);
+
+				socket.onmessage = function (event) {
+					try {
+						const update = JSON.parse(event.data);
+						if (update.closed) {
+							// alert('Meetup has been closed.');
+							socket.close();
+						}
+						// ... other handlers
+					} catch (err) {
+						console.warn('Invalid JSON message:', event.data);
+					}
+				};
+
+				socket.onerror = function (error) {
+					console.error('WebSocket Error:', error);
+				};
+
+				socket.onopen = function () {
+					console.log('WebSocket connection established.');
+					alert('Meetup successfully open.');
+					document.getElementById('send_button').disabled = false;
+					document.getElementById('start_btn').style.display = 'none';
+					document.getElementById('terminate_btn').style.display =
+						'inline-block';
+				};
+
+				// socket.onclose = function () {
+				// 	console.log('WebSocket connection closed.');
+				// 	document.getElementById('start_btn').style.display = 'inline-block';
+				// 	document.getElementById('terminate_btn').style.display = 'none';
+				// 	// Try to reconnect if the connection is closed
+				// 	// setTimeout(() => startConnection(), 1000); // Attempt reconnection after 1 second
+				// };
+			} else {
+				console.log('WebSocket connection already open.');
+			}
+		}
+
+		async function terminate() {
+			const meetupId = '{{ .Meetup.ID }}'; // from your Go template
+
+			const query = `
+		  				  mutation CloseMeetup($meetupID: ID!) {
+		  				    closeMeetup(meetupID: $meetupID)
+		  				  }
+		  				`;
+
+			const variables = {
+				meetupID: meetupId,
+			};
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+
+				if (result.errors) {
+					alert('Failed to close meetup: ' + result.errors[0].message);
+				}
+
+				if (result.data.closeMeetup) {
+					alert('Meetup connection successfully closed.');
+					if (socket && socket.readyState === WebSocket.OPEN) {
+						socket.close(); // Manually close connection
+						// setTimeout(() => startConnection(), 1000); // Attempt reconnection after 1 second
+					}
+
+					document.getElementById('start_btn').style.display = 'inline-block';
+					document.getElementById('terminate_btn').style.display = 'none';
+					document.getElementById('send_button').disabled = true;
+				}
+			} catch (err) {
+				console.error('Error:', err);
+				alert('Something went wrong while closing the meetup.');
+			}
+		}
+
+		async function removeUser(userId, button) {
+			if (
+				!confirm('Are you sure you want to remove this user from the meetup?')
+			) {
+				return;
+			}
+
+			const meetupId = '{{ .Meetup.ID }}';
+
+			const query = `
+								  mutation RemoveUser($input: InviteUserInput!, $loginUserID: ID!) {
+								    removeUser(input: $input, loginUserID: $loginUserID) {
+								      id
+								      username
+								    }
+								  }
+								`;
+
+			const variables = {
+				input: {
+					meetupID: meetupId,
+					userID: userId,
+				},
+				loginUserID: CURRENT_USER.id,
+			};
+
+			// Show loading spinner
+			const originalText = button.textContent;
+			button.disabled = true;
+			button.textContent = 'Removing...';
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+
+				if (result.errors) {
+					alert('Failed to remove user: ' + result.errors[0].message);
+				} else {
+					alert(`User ${result.data.removeUser.username} removed.`);
+					loadInvitedUsers();
+				}
+			} catch (err) {
+				console.error('Error:', err);
+				alert('Something went wrong.');
+			} finally {
+				button.disabled = false;
+				button.textContent = originalText;
+			}
+		}
+
+		async function loadInvitedUsers() {
+			const meetupId = '{{ .Meetup.ID }}';
+
+			const query = `
+						query GetInvitedUsers($meetupID: ID!) {
+								getMeetupUsersInvited(meetupID: $meetupID) {
+									id
+									username
+									email
+									firstName
+									lastName
+								}
+							}
+						`;
+
+			const variables = { meetupID: meetupId };
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+				if (result.data === null) {
+					document.getElementById('no_invitation').innerHTML =
+						'No other users invited, yet!';
+				}
+
+				if (result.errors) {
+					console.error('GraphQL errors:', result.errors);
+					// alert('Failed to load invited users');
+					return;
+				}
+
+				const invitedList = document.getElementById('invited-users');
+				invitedList.innerHTML = ''; // clear old list
+
+				result.data.getMeetupUsersInvited.forEach(renderInvitedUser);
+			} catch (err) {
+				console.error('Error loading invited users:', err);
+				alert('Something went wrong loading invited users.');
+			}
+		}
+
+		async function updateMeetup() {
+			const meetupId = CURRENT_MEETUP.id;
+			const name = document.getElementById('edit-name').value;
+			const description = document.getElementById('edit-description').value;
+
+			const query = `
+						mutation UpdateMeetup($id: ID!, $input: UpdateMeetup!) {
+							updateMeetup(id: $id, input: $input) {
+								id
+								name
+								description
+							}
+						}
+					`;
+
+			const variables = {
+				id: meetupId,
+				input: {
+					name,
+					description,
+				},
+			};
+
+			try {
+				const response = await fetch('/query', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					credentials: 'include',
+					body: JSON.stringify({ query, variables }),
+				});
+
+				const result = await response.json();
+
+				if (result.errors) {
+					alert('Update failed: ' + result.errors[0].message);
+					return;
+				}
+
+				alert('Meetup updated successfully.');
+				CURRENT_MEETUP.name = result.data.updateMeetup.name;
+				CURRENT_MEETUP.description = result.data.updateMeetup.description;
+
+				// Update UI
+				document.querySelector(
+					'h1'
+				).textContent = `Active Meetup: ${CURRENT_MEETUP.name}`;
+				document.querySelector('p').textContent = CURRENT_MEETUP.description;
+
+				document.getElementById('edit-meetup-modal').style.display = 'none';
+			} catch (err) {
+				console.error('Update failed:', err);
+				alert('Something went wrong.');
+			}
+		}
+
+		function showEditForm() {
+			const modal = document.getElementById('edit-meetup-modal');
+			document.getElementById('edit-name').value = CURRENT_MEETUP.name;
+			document.getElementById('edit-description').value =
+				CURRENT_MEETUP.description;
+			modal.style.display = 'flex';
+		}
+
+		function closeEditModal() {
+			document.getElementById('edit-meetup-modal').style.display = 'none';
+		}
+
+		function showInviteModal() {
+			const modal = document.getElementById('invite-modal');
+			document.getElementById('edit-name').value = CURRENT_MEETUP.name;
+			document.getElementById('edit-description').value =
+				CURRENT_MEETUP.description;
+			modal.style.display = 'flex';
+		}
+
+		function closeInviteModal() {
+			document.getElementById('invite-modal').style.display = 'none';
+		}
+
+		window.addEventListener('DOMContentLoaded', async () => {
+			await checkSession();
+
+			const meetupID = '{{ .Meetup.ID }}'; // if you're injecting it from Go templates
+			const meetup = await getMeetupByID(meetupID);
+
+			const sendButton = document.getElementById('send_button');
+			if (sendButton) {
+				sendButton.disabled =
+					socket?.readyState === undefined ||
+					socket.readyState === WebSocket.CLOSED;
+			} else {
+				sendButton.disabled = true;
+			}
+
+			if (meetup) {
+				console.log('Meetup:', meetup);
+				CURRENT_MEETUP = meetup;
+				// Optionally update the UI:
+				document.querySelector(
+					'h1'
+				).textContent = `Active Meetup: ${meetup.name}`;
+
+				const ownerHeading = document.getElementById('meetup-owner');
+				ownerHeading.textContent = `Meetup Owner: ${meetup.user.username}`;
+
+				// Restrict UI by role (creator vs participant)
+				const isCreator = CURRENT_USER && CURRENT_USER.id === meetup.user.id;
+
+				// Hide "Leave" if you're the creator
+				if (isCreator) {
+					document.getElementById('leave_meetup').style.display = 'none';
+
+					// document.getElementById('edit-meetup-form').style.display = 'block';
+					document.getElementById('edit-meetup-btn').style.display =
+						'inline-block';
+
+					// Fill current values
+					document.getElementById('edit-name').value = meetup.name;
+					document.getElementById('edit-description').value =
+						meetup.description;
+				} else {
+					// Hide Start/Close buttons for non-owners
+					document.getElementById('start_btn').style.display = 'none';
+					document.getElementById('terminate_btn').style.display = 'none';
+					document.getElementById('leave_meetup').style.display =
+						'inline-block';
+				}
+
+				// Add event listeners
+				document
+					.getElementById('edit-meetup-btn')
+					.addEventListener('click', showEditForm);
+				document
+					.getElementById('updateMeetup')
+					.addEventListener('click', updateMeetup);
+
+				document
+					.getElementById('start_btn')
+					.addEventListener('click', startMeetup);
+
+				document
+					.getElementById('terminate_btn')
+					.addEventListener('click', terminate);
+
+				document.getElementById('invite_btn').addEventListener('click', invite);
+
+				document
+					.getElementById('close_invite_btn')
+					.addEventListener('click', closeInviteModal);
+
+				document
+					.getElementById('submit_invite')
+					.addEventListener('click', submitInvite);
+				document
+					.getElementById('leave_meetup')
+					.addEventListener(
+						'click',
+						async () => await leaveMeetup(CURRENT_MEETUP.id)
+					);
+
+				document.body.addEventListener('click', (e) => {
+					if (e.target.closest('.close-button')) {
+						closeEditModal();
+					}
+				});
+			}
+
+			await loadInvitedUsers();
+			await fetchMessages();
+		});
+	</script>
 	<body class="meetup_layout">
 		<h1 class="underline">Active Meetup: {{ .Meetup.Name }}</h1>
 		<div class="edit_container">
 			<h3 id="meetup-owner" style="margin-top: 1.5em" class="underline"></h3>
-			<button
-				id="edit-meetup-btn"
-				onclick="showEditForm()"
-				style="display: none"
-			>
-				Edit Meetup
-			</button>
+			<button id="edit-meetup-btn" style="display: none">Edit Meetup</button>
 		</div>
 
 		<div id="edit-meetup-modal" class="modal" style="display: none">
 			<div class="modal-content">
-				<span class="close-button" onclick="closeEditModal()">&times;</span>
+				<span class="close-button">&times;</span>
 
 				<h3>Edit Meetup</h3>
 
@@ -163,721 +858,57 @@
 					rows="3"
 				></textarea>
 				<div style="display: flex; justify-content: flex-end">
-					<button onclick="updateMeetup()">Update</button>
+					<button id="updateMeetup">Update</button>
 				</div>
 			</div>
 		</div>
 
-		<p
+		<div
 			style="
+				max-width: 100%;
+				padding: 1rem;
 				margin-bottom: 0;
 				border: 2px solid #0056b3;
 				padding: 1em;
 				border-radius: 4px;
-				width: fit-content;
 			"
 		>
-			{{ .Meetup.Description }}
-		</p>
+			<h4 style="margin: 0">Description:</h4>
+			<p
+				style="
+					word-wrap: break-word;
+					white-space: normal;
+
+					width: -webkit-fill-available;
+				"
+			>
+				{{ .Meetup.Description }}
+			</p>
+		</div>
 
 		<section class="nav">
-			<button id="start-btn" onclick="startMeetup()">Start Meetup</button>
-			<button id="close-btn" style="display: none" onclick="terminate()">
-				Close Meetup
-			</button>
-			<button onclick="invite()">Invite Coworkers</button>
+			<button id="start_btn">Start Meetup</button>
+			<button id="terminate_btn" style="display: none">Close Meetup</button>
+			<button id="invite_btn">Invite Coworkers</button>
 
 			<div id="invite-modal" class="modal" style="display: none">
 				<div class="modal-content">
-					<span class="close-button" onclick="closeInviteModal()">&times;</span>
+					<span id="close_invite_btn" class="close-button">&times;</span>
 					<h3>Invite Coworkers</h3>
 					<label style="margin-bottom: 0.5em" for="user-select"
 						>Select a Coworker to invite:</label
 					>
 					<select style="height: 2em" id="user-select"></select>
 					<div class="modal-footer">
-						<button onclick="submitInvite()">Confirm Invite</button>
+						<button id="submit_invite">Confirm Invite</button>
 					</div>
 				</div>
 			</div>
-			<button onclick="leaveMeetup()">Leave Meetup</button>
+			<button id="leave_meetup">Leave Meetup</button>
 		</section>
 		<br />
-
-		<script>
-			let CURRENT_USER = null;
-			let CURRENT_MEETUP = null;
-
-			async function checkSession() {
-				const response = await fetch('/me');
-
-				if (response.ok) {
-					const authUser = await response.json();
-					CURRENT_USER = authUser; // store globally
-					return authUser;
-				}
-
-				alert('No authenticated user');
-				return null;
-			}
-
-			function renderInvitedUser(user) {
-				const invitedList = document.getElementById('invited-users');
-				const li = document.createElement('li');
-				li.innerHTML = `${user.username} (${user.email})`;
-
-				if (CURRENT_USER.id === CURRENT_MEETUP.user.id) {
-					const btn = document.createElement('button');
-					btn.textContent = 'Remove';
-					btn.style.marginLeft = '1em';
-					btn.onclick = () => removeUser(user.id, btn);
-					li.appendChild(btn);
-				}
-
-				invitedList.appendChild(li);
-			}
-
-			async function getMeetupByID(meetupID) {
-				const query = `
-								query GetMeetup($id: ID!) {
-									meetup(meetupID: $id) {
-										id
-										name
-										description
-										  user {
-      									id
-												username
-    								}
-									}
-								}
-							`;
-
-				const variables = { id: meetupID };
-
-				const response = await fetch('/query', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ query, variables }),
-				});
-
-				const result = await response.json();
-
-				if (result.errors) {
-					console.error('Failed to fetch meetup:', result.errors[0].message);
-					return null;
-				}
-
-				return result.data.meetup;
-			}
-
-			async function fetchUsers() {
-				const response = await fetch('/api/users');
-				const users = await response.json();
-				const select = document.getElementById('user-select');
-
-				// Clear previous entries
-				select.innerHTML = '';
-
-				users.forEach((user) => {
-					// Skip if user is the owner
-					if (user.id === CURRENT_MEETUP.user.id) {
-						return;
-					}
-					document.getElementById('invite-modal').style.display = 'flex';
-					const option = document.createElement('option');
-					option.value = user.id;
-					option.textContent = user.name;
-					select.appendChild(option);
-				});
-
-				// Show the dropdown section
-				// document.getElementById('invite-section').style.display = 'block';
-			}
-
-			function invite() {
-				// Fetch and show users when "Invite coworkers" is clicked
-				fetchUsers();
-			}
-
-			async function submitInvite() {
-				const meetupId = '{{ .Meetup.ID }}';
-				const select = document.getElementById('user-select');
-				const userId = parseInt(select.value);
-
-				const query = `
-							mutation InviteUser($input: InviteUserInput!) {
-							  inviteUser(input: $input) {
-							   		id
-							    	username
-									email
-									firstName
-									lastName
-							  	}
-								}
-						`;
-
-				const variables = {
-					input: {
-						meetupID: meetupId,
-						userID: userId,
-					},
-				};
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-					console.log('Result:', result);
-					const invitedList = document.getElementById('invited-users');
-					// let userLi = document.createElement('li');
-					// userLi.innerHTML = `<strong>${result.data.inviteUser.username} (${result.data.inviteUser.email})</strong>`;
-					// invitedList.appendChild(userLi);
-					renderInvitedUser(result.data.inviteUser);
-
-					if (result.errors) {
-						alert('Failed to invite user: ' + result.errors[0].message);
-					} else {
-						alert('User invited successfully.');
-						closeInviteModal();
-						// document.getElementById('invite-section').style.display = 'none';
-					}
-				} catch (err) {
-					console.error('Error:', err);
-					alert('Something went wrong.');
-				}
-			}
-
-			let socket;
-
-			document.addEventListener('DOMContentLoaded', () => {
-				// socket = new WebSocket('ws://localhost:8080/ws'); // adjust to your WS endpoint
-				document
-					.getElementById('send_button')
-					.addEventListener('click', sendMessage);
-			});
-
-			async function sendMessageToServer(message) {
-				const mutation = `
-												mutation SendMessage($input: NewMessageInput!) {
-													sendMessage(input: $input) {
-														id
-														content
-													}
-												}
-											`;
-
-				const variables = {
-					input: {
-						content: message,
-						meetupID: CURRENT_MEETUP.id,
-					},
-				};
-
-				const res = await fetch('/query', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ query: mutation, variables }),
-				});
-
-				const result = await res.json();
-				if (result.errors) {
-					alert('Failed to send message: ' + result.errors[0].message);
-					console.error(result.errors);
-					return false;
-				}
-
-				return result.data.sendMessage;
-			}
-
-			function sendMessageToSocket(message) {
-				if (socket && socket.readyState === WebSocket.OPEN) {
-					socket.send(
-						JSON.stringify({
-							meetupId: '{{ .Meetup.ID }}',
-							message: message,
-						})
-					);
-
-					let messageList = document.getElementById('message-list');
-					let li = document.createElement('li');
-					li.innerHTML = `<strong>You:</strong> ${message}`;
-					messageList.appendChild(li);
-					input.value = ''; // Clear input field
-					return true;
-				} else {
-					console.warn('WebSocket is not connected.');
-					return false;
-				}
-			}
-
-			async function sendMessage() {
-				const input = document.getElementById('message-input');
-				const message = input.value.trim();
-				if (!message) return;
-
-				// Call GraphQL mutation
-				const savedMessage = await sendMessageToServer(message);
-				if (!savedMessage) return;
-
-				// Send to WebSocket
-				sendMessageToSocket(message);
-
-				// Update the UI
-				const messageList = document.getElementById('message-list');
-				const li = document.createElement('li');
-				li.innerHTML = `<strong>You:</strong> ${message}`;
-				messageList.appendChild(li);
-				input.value = '';
-			}
-
-			async function fetchMessages() {
-				const query = `
-										query GetMessages($meetupID: ID!) {
-											getMessagesByMeetup(meetupID: $meetupID) {
-												id
-												content
-												timestamp
-												sender {
-													id
-													username
-												}
-											}
-										}
-									`;
-
-				const res = await fetch('/query', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						query,
-						variables: { meetupID: CURRENT_MEETUP.id },
-					}),
-				});
-
-				const result = await res.json();
-				const messages = result.data?.getMessagesByMeetup || [];
-				const list = document.getElementById('message-list');
-				list.innerHTML = '';
-				messages.forEach((m) => {
-					const li = document.createElement('li');
-					const sendAt = new Date(m.timestamp);
-
-
-					const time = sendAt.toLocaleTimeString([], {
-						hour: '2-digit',
-						minute: '2-digit',
-						second: '2-digit',
-					});
-					const date = sendAt.toLocaleDateString([], {
-						day: '2-digit',
-						month: '2-digit',
-						year: 'numeric',
-					});
-
-					const formatted = `${time} - ${date}`;
-
-					console.log(formatted);
-
-					const chatter =
-						CURRENT_USER.id === m.sender.id
-							? `<strong>You: </strong> ${m.content} <span>${formatted}</span>`
-							: `${m.content} <strong>: ${m.sender.username}</strong>`;
-					li.innerHTML = chatter;
-					list.appendChild(li);
-				});
-			}
-
-			// function sendMessage() {
-			// 	let input = document.getElementById('message-input');
-			// 	let message = input.value;
-			// 	if (!message) return;
-
-			// 	// Send message via WebSocket if the connection is open
-			// 	if (socket && socket.readyState === WebSocket.OPEN) {
-			// 		socket.send(
-			// 			JSON.stringify({
-			// 				meetupId: '{{ .Meetup.ID }}', // Send meetup ID
-			// 				message: message, // Send the message
-			// 			})
-			// 		);
-
-			// 		let messageList = document.getElementById('message-list');
-			// 		let li = document.createElement('li');
-			// 		li.innerHTML = `<strong>You:</strong> ${message}`;
-			// 		messageList.appendChild(li);
-			// 		input.value = ''; // Clear input field
-			// 	} else {
-			// 		alert('Connection is not establish. Meetup is NOT active.');
-			// 		console.error('WebSocket is not connected.');
-			// 	}
-			// }
-
-			async function startMeetup() {
-				const meetupId = '{{ .Meetup.ID }}';
-
-				const query = `
-							mutation StartMeetup($meetupID: ID!) {
-								startMeetup(meetupID: $meetupID)
-							}
-						`;
-
-				const variables = {
-					meetupID: meetupId,
-				};
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-					if (result.errors) {
-						console.error('Failed to start meetup:', result.errors);
-						alert('Failed to start meetup');
-					} else {
-						console.log('Meetup started');
-						startConnection(); // only start socket after starting
-					}
-				} catch (err) {
-					console.error('Error starting meetup:', err);
-					alert('Something went wrong.');
-				}
-			}
-
-			function startConnection() {
-				if (!socket || socket.readyState === WebSocket.CLOSED) {
-					// Open the WebSocket connection when the button is clicked
-					socket = new WebSocket(
-						'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
-					);
-
-					socket.onmessage = function (event) {
-						try {
-							const update = JSON.parse(event.data);
-							if (update.closed) {
-								// alert('Meetup has been closed.');
-								socket.close();
-							}
-							// ... other handlers
-						} catch (err) {
-							console.warn('Invalid JSON message:', event.data);
-						}
-					};
-
-					socket.onerror = function (error) {
-						console.error('WebSocket Error:', error);
-					};
-
-					socket.onopen = function () {
-						console.log('WebSocket connection established.');
-						alert('Meetup successfully open.');
-						document.getElementById('start-btn').style.display = 'none';
-						document.getElementById('close-btn').style.display = 'inline-block';
-					};
-
-					socket.onclose = function () {
-						console.log('WebSocket connection closed.');
-						document.getElementById('start-btn').style.display = 'inline-block';
-						document.getElementById('close-btn').style.display = 'none';
-						// Try to reconnect if the connection is closed
-						// setTimeout(() => startConnection(), 1000); // Attempt reconnection after 1 second
-					};
-				} else {
-					console.log('WebSocket connection already open.');
-				}
-			}
-
-			async function terminate() {
-				const meetupId = '{{ .Meetup.ID }}'; // from your Go template
-
-				const query = `
-  				  mutation CloseMeetup($meetupID: ID!) {
-  				    closeMeetup(meetupID: $meetupID)
-  				  }
-  				`;
-
-				const variables = {
-					meetupID: meetupId,
-				};
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-
-					if (result.errors) {
-						alert('Failed to close meetup: ' + result.errors[0].message);
-					}
-
-					if (result.data.closeMeetup) {
-						alert('Meetup successfully closed.');
-						if (socket && socket.readyState === WebSocket.OPEN) {
-							socket.close(); // Manually close connection
-						}
-
-						document.getElementById('start-btn').style.display = 'inline-block';
-						document.getElementById('close-btn').style.display = 'none';
-					}
-				} catch (err) {
-					console.error('Error:', err);
-					alert('Something went wrong while closing the meetup.');
-				}
-			}
-
-			async function removeUser(userId, button) {
-				if (
-					!confirm('Are you sure you want to remove this user from the meetup?')
-				) {
-					return;
-				}
-
-				const meetupId = '{{ .Meetup.ID }}';
-
-				const query = `
-						  mutation RemoveUser($input: InviteUserInput!, $loginUserID: ID!) {
-						    removeUser(input: $input, loginUserID: $loginUserID) {
-						      id
-						      username
-						    }
-						  }
-						`;
-
-				const variables = {
-					input: {
-						meetupID: meetupId,
-						userID: userId,
-					},
-					loginUserID: CURRENT_USER.id,
-				};
-
-				// Show loading spinner
-				const originalText = button.textContent;
-				button.disabled = true;
-				button.textContent = 'Removing...';
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-
-					if (result.errors) {
-						alert('Failed to remove user: ' + result.errors[0].message);
-					} else {
-						alert(`User ${result.data.removeUser.username} removed.`);
-						loadInvitedUsers();
-					}
-				} catch (err) {
-					console.error('Error:', err);
-					alert('Something went wrong.');
-				} finally {
-					button.disabled = false;
-					button.textContent = originalText;
-				}
-			}
-
-			async function loadInvitedUsers() {
-				const meetupId = '{{ .Meetup.ID }}';
-
-				const query = `
-								query GetInvitedUsers($meetupID: ID!) {
-										getMeetupUsersInvited(meetupID: $meetupID) {
-											id
-											username
-											email
-											firstName
-											lastName
-										}
-									}
-								`;
-
-				const variables = { meetupID: meetupId };
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-					if (result.data === null) {
-						document.getElementById('no_invitation').innerHTML =
-							'No other users invited, yet!';
-					}
-
-					if (result.errors) {
-						console.error('GraphQL errors:', result.errors);
-						// alert('Failed to load invited users');
-						return;
-					}
-
-					const invitedList = document.getElementById('invited-users');
-					invitedList.innerHTML = ''; // clear old list
-
-					result.data.getMeetupUsersInvited.forEach(renderInvitedUser);
-				} catch (err) {
-					console.error('Error loading invited users:', err);
-					alert('Something went wrong loading invited users.');
-				}
-			}
-
-			async function updateMeetup() {
-				const meetupId = CURRENT_MEETUP.id;
-				const name = document.getElementById('edit-name').value;
-				const description = document.getElementById('edit-description').value;
-
-				const query = `
-										mutation UpdateMeetup($id: ID!, $input: UpdateMeetup!) {
-											updateMeetup(id: $id, input: $input) {
-												id
-												name
-												description
-											}
-										}
-									`;
-
-				const variables = {
-					id: meetupId,
-					input: {
-						name,
-						description,
-					},
-				};
-
-				try {
-					const response = await fetch('/query', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						credentials: 'include',
-						body: JSON.stringify({ query, variables }),
-					});
-
-					const result = await response.json();
-
-					if (result.errors) {
-						alert('Update failed: ' + result.errors[0].message);
-						return;
-					}
-
-					alert('Meetup updated successfully.');
-					CURRENT_MEETUP.name = result.data.updateMeetup.name;
-					CURRENT_MEETUP.description = result.data.updateMeetup.description;
-
-					// Update UI
-					document.querySelector(
-						'h1'
-					).textContent = `Active Meetup: ${CURRENT_MEETUP.name}`;
-					document.querySelector('p').textContent = CURRENT_MEETUP.description;
-
-					document.getElementById('edit-meetup-modal').style.display = 'none';
-				} catch (err) {
-					console.error('Update failed:', err);
-					alert('Something went wrong.');
-				}
-			}
-
-			function showEditForm() {
-				const modal = document.getElementById('edit-meetup-modal');
-				document.getElementById('edit-name').value = CURRENT_MEETUP.name;
-				document.getElementById('edit-description').value =
-					CURRENT_MEETUP.description;
-				modal.style.display = 'flex';
-			}
-
-			function closeEditModal() {
-				document.getElementById('edit-meetup-modal').style.display = 'none';
-			}
-
-			function showInviteModal() {
-				const modal = document.getElementById('invite-modal');
-				document.getElementById('edit-name').value = CURRENT_MEETUP.name;
-				document.getElementById('edit-description').value =
-					CURRENT_MEETUP.description;
-				modal.style.display = 'flex';
-			}
-
-			function closeInviteModal() {
-				document.getElementById('invite-modal').style.display = 'none';
-			}
-
-			window.addEventListener('DOMContentLoaded', async () => {
-				await checkSession();
-
-				const meetupID = '{{ .Meetup.ID }}'; // if you're injecting it from Go templates
-				const meetup = await getMeetupByID(meetupID);
-
-				if (meetup) {
-					console.log('Meetup:', meetup);
-					CURRENT_MEETUP = meetup;
-					// Optionally update the UI:
-					document.querySelector(
-						'h1'
-					).textContent = `Active Meetup: ${meetup.name}`;
-
-					const ownerHeading = document.getElementById('meetup-owner');
-					ownerHeading.textContent = `Meetup Owner: ${meetup.user.username}`;
-
-					// Restrict UI by role (creator vs participant)
-					const isCreator = CURRENT_USER && CURRENT_USER.id === meetup.user.id;
-
-					// Hide "Leave" if you're the creator
-					if (isCreator) {
-						document.querySelector(
-							'button[onclick="leaveMeetup()"]'
-						).style.display = 'none';
-
-						// document.getElementById('edit-meetup-form').style.display = 'block';
-						document.getElementById('edit-meetup-btn').style.display =
-							'inline-block';
-
-						// Fill current values
-						document.getElementById('edit-name').value = meetup.name;
-						document.getElementById('edit-description').value =
-							meetup.description;
-					} else {
-						// Hide Start/Close buttons for non-owners
-						document.getElementById('start-btn').style.display = 'none';
-						document.getElementById('close-btn').style.display = 'none';
-					}
-				}
-
-				await loadInvitedUsers();
-				await fetchMessages();
-			});
-		</script>
 		<section>
-			<h3
-				style="margin: 0; padding-top: 0.3em;"
-				class="underline"
-			>
+			<h3 style="margin: 0; padding-top: 0.3em" class="underline">
 				Invited Users:
 			</h3>
 			<div id="no_invitation" style="margin-top: 1em"></div>
@@ -886,32 +917,5 @@
 		<br />
 
 		{{ template "messages" . }}
-
-		<!-- <section>
-			<h2 class="underline">Messages:</h2>
-			<div class="message-container">
-				<textarea
-					cols="7"
-					rows="4"
-					type="text"
-					id="message-input"
-					placeholder="Type a message..."
-				></textarea>
-				<div>
-					<button onclick="sendMessage()">Send</button>
-				</div>
-			</div>
-			<ul id="message-list">
-				{{
-					range.Messages
-				}}
-				<li>
-					<strong>{{ .User }}:</strong> {{ .Content }}
-				</li>
-				{{
-					end
-				}}
-			</ul>
-		</section> -->
 	</body>
 </html>

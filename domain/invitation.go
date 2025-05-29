@@ -51,7 +51,7 @@ func (d *Domain) RemoveUserFromMeetup(ctx context.Context, input models.InviteUs
 
 		return user, nil
 	}
-	
+
 	return nil, errors.New("Do not have permission to do this.")
 
 	// if !meetup.IsOwner(currentUser) {
@@ -74,4 +74,30 @@ func (d *Domain) GetMeetupUsersInvited(ctx context.Context, meetupID string) ([]
 	}
 
 	return users, nil
+}
+
+func (d *Domain) LeaveMeetup(ctx context.Context, meetupID string) (bool, error) {
+	currentUser, err := middleware.GetCurrentUserFromCTX(ctx)
+	if err != nil {
+		return false, ErrUnauthenticated
+	}
+
+	// Optional: check if the meetup exists
+	meetup, err := d.MeetupRepo.GetByID(meetupID)
+	if err != nil || meetup == nil {
+		return false, errors.New("meetup not exists")
+	}
+
+	// Ensure user is not the owner
+	if meetup.UserID == currentUser.ID {
+		return false, errors.New("owner cannot leave their own meetup")
+	}
+
+	// Call the invitation repo to remove the user
+	err = d.InvitationRepo.LeaveUserFromMeetup(meetupID, currentUser.ID)
+	if err != nil {
+		return false, fmt.Errorf("failed to leave meetup: %w", err)
+	}
+
+	return true, nil
 }

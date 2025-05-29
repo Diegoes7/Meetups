@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"log"
+
 	// "strconv"
 
 	"github.com/Diegoes7/meetups/models"
@@ -151,4 +152,26 @@ func (r *InvitationRepo) GetInvitedUsersByMeetupID(meetupID string) ([]*models.U
 	}
 
 	return users, nil
+}
+
+func (r *InvitationRepo) LeaveUserFromMeetup(meetupID, userID string) error {
+	// Delete the invitation row
+	_, err := r.DB.Model((*models.Invitation)(nil)).
+		Where("meetup_id = ? AND user_id = ?", meetupID, userID).
+		Delete()
+	if err != nil {
+		return fmt.Errorf("failed to remove user from meetup: %w", err)
+	}
+	return nil
+}
+
+func (d *InvitationRepo) GetMeetupsUserIsInvitedTo(userID string) ([]*models.Meetup, error) {
+	var meetups []*models.Meetup
+
+	err := d.DB.Model(&meetups).
+		Join("JOIN invitations AS i ON i.meetup_id = meetup.id").
+		Where("i.user_id = ?", userID).
+		Select()
+
+	return meetups, err
 }

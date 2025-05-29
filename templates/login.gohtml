@@ -4,14 +4,11 @@
 		style="display: flex; justify-content: space-between; align-items: center"
 	>
 		<h1 style="margin: 0.5em 0">Login</h1>
-		<!-- <div class="register_button"> -->
 		<a href="/register" class="register_link"> Go To Register</a>
-		<!-- </div> -->
 	</div>
 
 	<form id="loginForm">
 		<div style="width: fit-content">
-			<!-- Top-right corner link -->
 			<label for="email" class="required">Email:</label>
 			<br />
 			<input type="text" id="email" name="email" required />
@@ -35,13 +32,15 @@
 	<div>
 		<button
 			id="logout_btn"
-			onclick="logout()"
 			style="margin-top: 1em; font-size: 0.9em; display: none"
 		>
 			Logout
 		</button>
 	</div>
-	<script>
+	<script type="module">
+		import { enableEnterKeyAction } from '/templates/static/utils.js';
+
+		enableEnterKeyAction('#password', 'form#loginForm button[type="submit"]');
 		document
 			.getElementById('loginForm')
 			.addEventListener('submit', async function (e) {
@@ -75,6 +74,8 @@
 					// Show the user info
 					document.getElementById('userInfo').style.display = 'block';
 					document.getElementById('logout_btn').style.display = 'block';
+
+					window.location.reload();
 				} else {
 					alert('Login failed. Please check your credentials.');
 				}
@@ -91,6 +92,9 @@
 
 			window.location.reload();
 		}
+		window.addEventListener('DOMContentLoaded', async () => {
+			document.getElementById('logout_btn').addEventListener('click', logout);
+		});
 	</script>
 </body>
 

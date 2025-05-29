@@ -98,3 +98,30 @@ func (d *Domain) DeleteMeetup(ctx context.Context, id string) (bool, error) {
 	}
 	return true, nil
 }
+
+func (d *Domain) GetMeetupsUserCanParticipate(ctx context.Context, userID string) ([]*models.Meetup, error) {
+	createdMeetups, err := d.MeetupRepo.GetByOwnerID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching created meetups: %w", err)
+	}
+
+	invitedMeetups, err := d.InvitationRepo.GetMeetupsUserIsInvitedTo(userID)
+	if err != nil {
+		return nil, fmt.Errorf("fetching invited meetups: %w", err)
+	}
+
+	// Merge, avoiding duplicates (simple map-based deduplication)
+	meetupMap := make(map[string]*models.Meetup)
+	for _, m := range createdMeetups {
+		meetupMap[m.ID] = m
+	}
+	for _, m := range invitedMeetups {
+		meetupMap[m.ID] = m
+	}
+
+	result := make([]*models.Meetup, 0, len(meetupMap))
+	for _, m := range meetupMap {
+		result = append(result, m)
+	}
+	return result, nil
+}

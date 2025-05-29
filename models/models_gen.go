@@ -44,8 +44,7 @@ type Message struct {
 	MeetupID  string    `json:"meetupID"`
 	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
-	// Sender    *User     `json:"sender"`
-	 Sender    *User     `json:"sender" pg:"rel:has-one,fk:sender_id"` // Add pg tag for ORM to join
+	Sender    *User     `json:"sender"`
 }
 
 type Mutation struct {

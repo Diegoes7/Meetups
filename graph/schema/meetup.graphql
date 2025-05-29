@@ -8,6 +8,7 @@ type Meetup {
 	id: ID!
 	name: String!
 	description: String!
+	userID: ID!
 	user: User!
 }
 
@@ -37,27 +38,10 @@ input InviteUserInput {
 	userID: ID!
 }
 
-input NewMessageInput {
-	meetupID: ID!
-	content: String!
-	# user: User!
-}
-
-input UpdateMessageInput {
-	messageID: ID!
-	content: String!
-}
-
 extend type Query {
 	meetups(filter: MeetupsFilter, limit: Int = 10, offset: Int = 0): [Meetup!]!
 	getMeetupUsersInvited(meetupID: ID!): [User!]!
 	meetup(meetupID: ID!): Meetup!
-
-	getMessagesByMeetup(
-		meetupID: ID!
-		limit: Int = 50
-		offset: Int = 0
-	): [Message!]!
 }
 
 extend type Mutation {
@@ -69,10 +53,11 @@ extend type Mutation {
 	startMeetup(meetupID: ID!): Boolean!
 	inviteUser(input: InviteUserInput!): User!
 	removeUser(input: InviteUserInput!, loginUserID: ID!): User!
+	leaveMeetup(meetupID: ID!): Boolean!
 	closeMeetup(meetupID: ID!): Boolean!
-
-	#! messages
-	sendMessage(input: NewMessageInput!): Message!
-	editMessage(input: UpdateMessageInput!): Message!
-	deleteMessage(messageID: ID!): Boolean!
 }
+
+
+#! I need to have a query, amy be meetup or visibleMeetup where i can go in, because i am invited
+#! i need to get all the meetups => join with the invitation table get all rows where my userID is true
+#! because i participate in this meetup => return this meetups ot return null and show only the available to enter meetups 

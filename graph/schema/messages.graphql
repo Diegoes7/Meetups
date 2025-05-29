@@ -1,0 +1,33 @@
+type Message {
+	id: ID!
+	senderID: ID!
+	meetupID: ID!
+	content: String!
+	timestamp: Time!
+	sender: User! # 👈 querying user info from a message
+}
+
+input NewMessageInput {
+	meetupID: ID!
+	content: String!
+	# user: User!
+}
+
+input UpdateMessageInput {
+	messageID: ID!
+	content: String!
+}
+
+extend type Query {
+	getMessagesByMeetup(
+		meetupID: ID!
+		limit: Int = 50
+		offset: Int = 0
+	): [Message!]!
+}
+
+extend type Mutation {
+	sendMessage(input: NewMessageInput!): Message!
+	editMessage(input: UpdateMessageInput!): Message!
+	deleteMessage(messageID: ID!): Boolean!
+}

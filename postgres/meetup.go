@@ -80,3 +80,27 @@ func (m MeetupRepo) Delete(meetup *models.Meetup) error {
 	_, err := m.DB.Model(meetup).Where("id = ?", meetup.ID).Delete()
 	return err
 }
+
+
+func (r *MeetupRepo) GetMeetupsUserIsInvitedTo(userID string) ([]*models.Meetup, error) {
+	var meetups []*models.Meetup
+
+	err := r.DB.Model(&meetups).
+		Join("JOIN invitations AS i ON i.meetup_id = meetup.id").
+		Where("i.user_id = ?", userID).
+		Select()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return meetups, nil
+}
+
+func (r *MeetupRepo) GetByOwnerID(userID string) ([]*models.Meetup, error) {
+	var meetups []*models.Meetup
+	err := r.DB.Model(&meetups).
+		Where("user_id = ?", userID).
+		Select()
+	return meetups, err
+}

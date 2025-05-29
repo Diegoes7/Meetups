@@ -12,78 +12,94 @@
 			>
 			<button onclick="goToMeetup('{{ .ID }}')">Enter</button>
 		</div>
-		<div>
-			<span>Info: {{ .Description }}</span>
-			<button class="delete_button" onclick="deleteMeetup('{{ .ID }}')">
-				Delete
-			</button>
 		</div>
 	</li>
 	{{
 		end
 	}}
 </ol>
-<script>
-	async function fetchData() {
-		fetch('http://localhost:8080/query', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({
-				query: `{
-                   meetups {
-                       id
-                       name
-                       description
-                   }
-                   users {
-                       id
-                       username
-                       email
-                       firstName
-	                     lastName
-                   }
-               }`,
-			}),
-		})
-			.then((response) => {
-				if (!response.ok) {
-					throw new Error('Network response was not ok');
-				}
-				return response.json();
-			})
-			.then((data) => {
-				// Ensure data contains 'meetups' and 'users'
-				if (data.data) {
-					// Display meetups
-					let meetupsHTML = '';
-					data.data.meetups.forEach((meetup) => {
-						meetupsHTML += ` <li class="meetup">
-  											  <div style="display: flex; justify-content: space-between; align-items: center;">
-  											    <span><strong>${meetup.name}</strong></span>
-  											    <button onclick="goToMeetup(${meetup.id})">Enter</button>
-														</div>
-														<div style="display: flex; justify-content: space-between; align-items: center;">
-															<span>Info: ${meetup.description}</span>
-															<button class="delete_button" onclick="deleteMeetup('${meetup.id}')">Delete</button>
-													  </div>
-  											</li>`;
-					});
-					document.getElementById('meetups').innerHTML = meetupsHTML;
+<script  type="module">
+import { fetchInvitedUsers } from '/templates/static/meetup.js'
 
-					// Display users
-					let usersHTML = '';
-					data.data.users.forEach((user) => {
-						usersHTML += `<li><p>${user.username}, ${user.email}, ${user.firstName}, ${user.lastName}</p></li>`;
-					});
-					document.getElementById('users').innerHTML = usersHTML;
-				} else {
-					throw new Error('Invalid response structure');
-				}
-			})
-			.catch((error) => console.error('Error:', error));
-	}
+	async function fetchData() {
+  try {
+    const response = await fetch('http://localhost:8080/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `{
+          meetups {
+            id
+            name
+            description
+            userID
+          }
+          users {
+            id
+            username
+            email
+            firstName
+            lastName
+          }
+        }`,
+      }),
+    });
+
+    if (!response.ok) throw new Error('Network response was not ok');
+
+    const data = await response.json();
+
+    if (!data.data) throw new Error('Invalid response structure');
+
+    const meetups = data.data.meetups;
+    const users = data.data.users;
+
+    // Fetch all invited users *in parallel*
+    const invitedUsersList = await Promise.all(
+      meetups.map(meetup => fetchInvitedUsers(meetup.id))
+    );
+
+    let meetupsHTML = '';
+
+    for (let i = 0; i < meetups.length; i++) {
+      const meetup = meetups[i];
+      const invitedUsers = invitedUsersList[i];
+
+			console.log(invitedUsersList[i])
+
+      const isCreator = CURRENT_USER && CURRENT_USER.id === meetup.userID;
+      const deleteButtonHTML = isCreator
+        ? `<button class="delete_button" onclick="deleteMeetup('${meetup.id}')">Delete</button>`
+        : '';
+
+      const isInvited = invitedUsers.some(u => u.id === CURRENT_USER.id);
+      const enterBtn =  (isInvited || isCreator) ? `<button class="enter-btn" data-meetup-id="${meetup.id}">Enter</button>` : '';
+
+			meetupsHTML += ` <li class="meetup">
+  											  <div style="display: flex; justify-content: space-between; align-items: flex-start;flex-direction: column">
+  											    <span> <strong>${i+1}. ${meetup.name}</strong></span>
+														<span style="flex: 1; word-break: break-word;">Info: ${meetup.description}</span>
+														</div>
+														<div style="display: flex; justify-content: space-between; flex-direction: column; margin-left: 0.5em;">
+														${enterBtn}
+ 														${deleteButtonHTML}
+													</div>
+  											</li>`;
+    }
+
+    document.getElementById('meetups').innerHTML = meetupsHTML;
+
+    // Optionally: render users if needed
+    let usersHTML = '';
+    users.forEach(user => {
+      usersHTML += `<li><p>${user.username}, ${user.email}, ${user.firstName}, ${user.lastName}</p></li>`;
+    });
+    document.getElementById('users').innerHTML = usersHTML;
+
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
 
 	// Navigate to active meetup page
 	function goToMeetup(meetupId) {
@@ -126,10 +142,18 @@
 		}
 	}
 
-	window.onload = async function () {
+	window.addEventListener('DOMContentLoaded', async () => {
+	// window.onload = async function () {
 		// Call your other fetch data function
-		await fetchData();
 		await checkSession();
-	};
+		await fetchData();
+
+		document.querySelectorAll('.enter-btn').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const meetupId = btn.dataset.meetupId;
+				goToMeetup(meetupId);
+			});
+		});
+	});
 </script>
 {{ end }}

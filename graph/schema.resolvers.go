@@ -6,8 +6,10 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/Diegoes7/meetups/middleware"
 	"github.com/Diegoes7/meetups/models"
 )
 
@@ -19,6 +21,16 @@ func (r *mutationResolver) Dummy(ctx context.Context) (*string, error) {
 // Dummy is the resolver for the _dummy field.
 func (r *queryResolver) Dummy(ctx context.Context) (*string, error) {
 	panic(fmt.Errorf("not implemented: Dummy - _dummy"))
+}
+
+// ParticipableMeetups is the resolver for the participableMeetups field.
+func (r *queryResolver) ParticipableMeetups(ctx context.Context) ([]*models.Meetup, error) {
+	currentUser, err := middleware.GetCurrentUserFromCTX(ctx)
+	if err != nil {
+		return nil, errors.New("No authenticated user")
+	}
+
+	return r.Domain.GetMeetupsUserCanParticipate(ctx, currentUser.ID)
 }
 
 // CurrentTime is the resolver for the currentTime field.

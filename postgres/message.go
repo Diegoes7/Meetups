@@ -112,8 +112,12 @@ func (r *MessageRepo) GetMessageByID(messageID string) (*models.Message, error) 
 
 // UpdateContent updates the content of a message by its ID and returns the updated message.
 func (r *MessageRepo) UpdateContent(messageID string, newContent string) (*models.Message, error) {
-	var message models.Message
-	_, err := r.DB.Model(&message).
+	message := &models.Message{
+		ID:      messageID,
+		Content: newContent,
+	}
+
+	_, err := r.DB.Model(message).
 		Column("content").
 		Where("id = ?", messageID).
 		Update()

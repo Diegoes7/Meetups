@@ -94,6 +94,7 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
+		AcceptInvite  func(childComplexity int, meetupID string, userID string) int
 		CloseMeetup   func(childComplexity int, meetupID string) int
 		CreateMeetup  func(childComplexity int, input models.NewMeetup) int
 		DeleteMeetup  func(childComplexity int, id string) int
@@ -115,6 +116,7 @@ type ComplexityRoot struct {
 		Dummy                 func(childComplexity int) int
 		GetMeetupUsersInvited func(childComplexity int, meetupID string) int
 		GetMessagesByMeetup   func(childComplexity int, meetupID string, limit *int32, offset *int32) int
+		Invitations           func(childComplexity int, filter *models.InvitationFilter, limit *int32, offset *int32) int
 		Me                    func(childComplexity int) int
 		Meetup                func(childComplexity int, meetupID string) int
 		Meetups               func(childComplexity int, filter *models.MeetupsFilter, limit *int32, offset *int32) int
@@ -164,10 +166,12 @@ type MutationResolver interface {
 	Register(ctx context.Context, input *models.RegisterArgs) (*models.AuthResponse, error)
 	Login(ctx context.Context, input models.LoginInput) (*models.AuthResponse, error)
 	Logout(ctx context.Context, userID string) (*models.User, error)
+	AcceptInvite(ctx context.Context, meetupID string, userID string) (*models.Meetup, error)
 }
 type QueryResolver interface {
 	Dummy(ctx context.Context) (*string, error)
 	ParticipableMeetups(ctx context.Context) ([]*models.Meetup, error)
+	Invitations(ctx context.Context, filter *models.InvitationFilter, limit *int32, offset *int32) ([]*models.Invitation, error)
 	Meetups(ctx context.Context, filter *models.MeetupsFilter, limit *int32, offset *int32) ([]*models.Meetup, error)
 	GetMeetupUsersInvited(ctx context.Context, meetupID string) ([]*models.User, error)
 	Meetup(ctx context.Context, meetupID string) (*models.Meetup, error)
@@ -363,6 +367,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Message.Timestamp(childComplexity), true
+
+	case "Mutation.acceptInvite":
+		if e.complexity.Mutation.AcceptInvite == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_acceptInvite_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.AcceptInvite(childComplexity, args["meetupID"].(string), args["userID"].(string)), true
 
 	case "Mutation.closeMeetup":
 		if e.complexity.Mutation.CloseMeetup == nil {
@@ -570,6 +586,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetMessagesByMeetup(childComplexity, args["meetupID"].(string), args["limit"].(*int32), args["offset"].(*int32)), true
 
+	case "Query.invitations":
+		if e.complexity.Query.Invitations == nil {
+			break
+		}
+
+		args, err := ec.field_Query_invitations_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Invitations(childComplexity, args["filter"].(*models.InvitationFilter), args["limit"].(*int32), args["offset"].(*int32)), true
+
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
 			break
@@ -724,6 +752,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputInvitationFilter,
 		ec.unmarshalInputInviteUserInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputMeetupsFilter,
@@ -845,7 +874,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/meetup.graphql" "schema/messages.graphql" "schema/schema.graphql" "schema/user.graphql"
+//go:embed "schema/invitation.graphql" "schema/meetup.graphql" "schema/messages.graphql" "schema/schema.graphql" "schema/user.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -857,6 +886,7 @@ func sourceData(filename string) string {
 }
 
 var sources = []*ast.Source{
+	{Name: "schema/invitation.graphql", Input: sourceData("schema/invitation.graphql"), BuiltIn: false},
 	{Name: "schema/meetup.graphql", Input: sourceData("schema/meetup.graphql"), BuiltIn: false},
 	{Name: "schema/messages.graphql", Input: sourceData("schema/messages.graphql"), BuiltIn: false},
 	{Name: "schema/schema.graphql", Input: sourceData("schema/schema.graphql"), BuiltIn: false},
@@ -867,6 +897,47 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_acceptInvite_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_acceptInvite_argsMeetupID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["meetupID"] = arg0
+	arg1, err := ec.field_Mutation_acceptInvite_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_acceptInvite_argsMeetupID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("meetupID"))
+	if tmp, ok := rawArgs["meetupID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_acceptInvite_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+	if tmp, ok := rawArgs["userID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
 
 func (ec *executionContext) field_Mutation_closeMeetup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -1319,6 +1390,65 @@ func (ec *executionContext) field_Query_getMessagesByMeetup_argsLimit(
 }
 
 func (ec *executionContext) field_Query_getMessagesByMeetup_argsOffset(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int32, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+	if tmp, ok := rawArgs["offset"]; ok {
+		return ec.unmarshalOInt2ᚖint32(ctx, tmp)
+	}
+
+	var zeroVal *int32
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_invitations_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_invitations_argsFilter(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
+	arg1, err := ec.field_Query_invitations_argsLimit(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
+	arg2, err := ec.field_Query_invitations_argsOffset(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["offset"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Query_invitations_argsFilter(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*models.InvitationFilter, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+	if tmp, ok := rawArgs["filter"]; ok {
+		return ec.unmarshalOInvitationFilter2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationFilter(ctx, tmp)
+	}
+
+	var zeroVal *models.InvitationFilter
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_invitations_argsLimit(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int32, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		return ec.unmarshalOInt2ᚖint32(ctx, tmp)
+	}
+
+	var zeroVal *int32
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_invitations_argsOffset(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (*int32, error) {
@@ -3525,6 +3655,73 @@ func (ec *executionContext) fieldContext_Mutation_logout(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_acceptInvite(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_acceptInvite(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().AcceptInvite(rctx, fc.Args["meetupID"].(string), fc.Args["userID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.Meetup)
+	fc.Result = res
+	return ec.marshalNMeetup2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMeetup(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_acceptInvite(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Meetup_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Meetup_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Meetup_description(ctx, field)
+			case "userID":
+				return ec.fieldContext_Meetup_userID(ctx, field)
+			case "user":
+				return ec.fieldContext_Meetup_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Meetup", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_acceptInvite_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query__dummy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query__dummy(ctx, field)
 	if err != nil {
@@ -3618,6 +3815,71 @@ func (ec *executionContext) fieldContext_Query_participableMeetups(_ context.Con
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Meetup", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_invitations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_invitations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Invitations(rctx, fc.Args["filter"].(*models.InvitationFilter), fc.Args["limit"].(*int32), fc.Args["offset"].(*int32))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.Invitation)
+	fc.Result = res
+	return ec.marshalNInvitation2ᚕᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitation(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_invitations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_Invitation_ID(ctx, field)
+			case "MeetupID":
+				return ec.fieldContext_Invitation_MeetupID(ctx, field)
+			case "UserID":
+				return ec.fieldContext_Invitation_UserID(ctx, field)
+			case "Status":
+				return ec.fieldContext_Invitation_Status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Invitation", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_invitations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -6589,6 +6851,40 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(_ context.Context
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputInvitationFilter(ctx context.Context, obj any) (models.InvitationFilter, error) {
+	var it models.InvitationFilter
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"status", "userID"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOInvitationStatus2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationStatus(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInviteUserInput(ctx context.Context, obj any) (models.InviteUserInput, error) {
 	var it models.InviteUserInput
 	asMap := map[string]any{}
@@ -7358,6 +7654,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "acceptInvite":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_acceptInvite(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7429,6 +7732,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_participableMeetups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "invitations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_invitations(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -8189,6 +8514,44 @@ func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) marshalNInvitation2ᚕᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitation(ctx context.Context, sel ast.SelectionSet, v []*models.Invitation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOInvitation2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
 func (ec *executionContext) unmarshalNInvitationStatus2githubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationStatus(ctx context.Context, v any) (models.InvitationStatus, error) {
 	var res models.InvitationStatus
 	err := res.UnmarshalGQL(v)
@@ -8754,6 +9117,37 @@ func (ec *executionContext) marshalOInt2ᚖint32(ctx context.Context, sel ast.Se
 	}
 	res := graphql.MarshalInt32(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOInvitation2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitation(ctx context.Context, sel ast.SelectionSet, v *models.Invitation) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Invitation(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOInvitationFilter2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationFilter(ctx context.Context, v any) (*models.InvitationFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputInvitationFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOInvitationStatus2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationStatus(ctx context.Context, v any) (*models.InvitationStatus, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(models.InvitationStatus)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInvitationStatus2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐInvitationStatus(ctx context.Context, sel ast.SelectionSet, v *models.InvitationStatus) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOMeetupsFilter2ᚖgithubᚗcomᚋDiegoes7ᚋmeetupsᚋmodelsᚐMeetupsFilter(ctx context.Context, v any) (*models.MeetupsFilter, error) {

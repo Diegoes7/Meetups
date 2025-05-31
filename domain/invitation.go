@@ -101,3 +101,8 @@ func (d *Domain) LeaveMeetup(ctx context.Context, meetupID string) (bool, error)
 
 	return true, nil
 }
+
+
+func(d *Domain) GetInvitations(filter *models.InvitationFilter, limit, offset *int32)	([]*models.Invitation, error) {
+	return d.InvitationRepo.GetInvitations(filter, limit, offset)
+}

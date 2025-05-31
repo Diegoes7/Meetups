@@ -1,0 +1,25 @@
+enum InvitationStatus {
+	pending
+	accepted
+	declined
+}
+
+type Invitation {
+	ID: ID!
+	MeetupID: ID!
+	UserID: ID!
+	Status: InvitationStatus!
+}
+
+input InvitationFilter {
+	status: InvitationStatus
+	userID: ID!
+}
+
+extend type Query {
+	invitations(
+		filter: InvitationFilter
+		limit: Int = 10
+		offset: Int = 0
+	): [Invitation]!
+}

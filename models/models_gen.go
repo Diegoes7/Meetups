@@ -17,6 +17,11 @@ type Invitation struct {
 	Status   InvitationStatus `json:"Status"`
 }
 
+type InvitationFilter struct {
+	Status *InvitationStatus `json:"status,omitempty"`
+	UserID string            `json:"userID"`
+}
+
 type InviteUserInput struct {
 	MeetupID string `json:"meetupID"`
 	UserID   string `json:"userID"`
@@ -93,8 +98,8 @@ type UpdateMessageInput struct {
 type InvitationStatus string
 
 const (
-	InvitationStatusPending  InvitationStatus = "Pending"
-	InvitationStatusAccepted InvitationStatus = "Accepted"
+	InvitationStatusPending  InvitationStatus = "pending"
+	InvitationStatusAccepted InvitationStatus = "accepted"
 	InvitationStatusDeclined InvitationStatus = "declined"
 )
 

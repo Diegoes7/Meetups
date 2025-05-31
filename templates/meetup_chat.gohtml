@@ -138,7 +138,7 @@
 	<script type="module">
 		import { formatTimestamp } from '/templates/static/utils.js';
 		import { handleDelete, handleEdit } from '/templates/static/chat.js';
-		import { leaveMeetup } from '/templates/static/meetup.js';
+		import { leaveMeetup, getMeetupByID } from '/templates/static/meetup.js';
 		console.log(formatTimestamp(Date.now()));
 
 		let CURRENT_USER = null;
@@ -171,41 +171,6 @@
 			}
 
 			invitedList.appendChild(li);
-		}
-
-		async function getMeetupByID(meetupID) {
-			const query = `
-						query GetMeetup($id: ID!) {
-							meetup(meetupID: $id) {
-								id
-								name
-								description
-								  user {
-		      					id
-										username
-		    				}
-							}
-						}
-									`;
-
-			const variables = { id: meetupID };
-
-			const response = await fetch('/query', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ query, variables }),
-			});
-
-			const result = await response.json();
-
-			if (result.errors) {
-				console.error('Failed to fetch meetup:', result.errors[0].message);
-				return null;
-			}
-
-			return result.data.meetup;
 		}
 
 		async function fetchUsers() {

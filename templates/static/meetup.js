@@ -115,3 +115,38 @@ export async function getParticipableMeetups() {
 		return [];
 	}
 }
+
+export async function getMeetupByID(meetupID) {
+	const query = `
+						query GetMeetup($id: ID!) {
+							meetup(meetupID: $id) {
+								id
+								name
+								description
+								  user {
+		      					id
+										username
+		    				}
+							}
+						}
+									`;
+
+	const variables = { id: meetupID };
+
+	const response = await fetch('/query', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ query, variables }),
+	});
+
+	const result = await response.json();
+
+	if (result.errors) {
+		console.error('Failed to fetch meetup:', result.errors[0].message);
+		return null;
+	}
+
+	return result.data.meetup;
+}

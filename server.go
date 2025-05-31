@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -18,9 +19,9 @@ import (
 	customMiddleware "github.com/Diegoes7/meetups/middleware"
 	"github.com/Diegoes7/meetups/models"
 	"github.com/Diegoes7/meetups/postgres"
+	"github.com/Diegoes7/meetups/internal/db"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-pg/pg/v10"
 	"github.com/rs/cors"
 )
 
@@ -28,14 +29,13 @@ import (
 const defaultPort = "8080" // Change port to avoid GraphQL playground landing
 
 func main() {
-	DB := postgres.New(&pg.Options{
-		User:     "postgres",
-		Password: "victoria7",
-		Database: "meetup_dev",
-	})
-
+	ctx := context.Background()
+	connections, err := db.NewConnections(ctx)
+	if err != nil {
+		log.Fatalf("Could not initialize connections: %v", err)
+	}
+	DB := connections.Postgres
 	defer DB.Close()
-
 	DB.AddQueryHook(&postgres.DBLogger{})
 
 	port := os.Getenv("PORT")

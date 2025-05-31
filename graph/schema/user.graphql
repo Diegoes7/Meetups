@@ -34,4 +34,5 @@ extend type Mutation {
 	register(input: RegisterArgs): AuthResponse!
 	login(input: LoginInput!): AuthResponse!
 	logout(userID: ID!): User!
+	acceptInvite(meetupID: ID!, userID: ID!): Meetup!
 }

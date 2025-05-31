@@ -1,46 +1,104 @@
 {{ define "login" }}
 <body>
+	<style>
+		.invitation_pane {
+			padding: 0 1em;
+			display: flex;
+			min-width: 200px;
+			flex: 1 1 auto;
+			border: 1px solid #ccc;
+			flex-direction: column;
+			margin-top: 0.5em;
+			border-radius: 0.5em;
+			min-height: 12em;
+		}
+
+		.tab_btn.active {
+			background-color: #981e80;
+			color: white;
+			font-weight: bold;
+		}
+
+		/* Default layout: row */
+		.flex_wrapper {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 1em;
+		}
+		#userInfo {
+			display: flex;
+			flex-direction: column;
+			flex: 1 1 auto;
+		}
+
+		/* Responsive adjustment */
+		@media (max-width: 690px) {
+			.flex_wrapper {
+				flex-direction: column;
+			}
+		}
+	</style>
 	<div
 		style="display: flex; justify-content: space-between; align-items: center"
 	>
 		<h1 style="margin: 0.5em 0">Login</h1>
 		<a href="/register" class="register_link"> Go To Register</a>
 	</div>
+	<section class="flex_wrapper">
+		<form id="loginForm">
+			<div style="width: fit-content">
+				<label for="email" class="required">Email:</label>
+				<br />
+				<input type="text" id="email" name="email" required />
+				<br />
 
-	<form id="loginForm">
-		<div style="width: fit-content">
-			<label for="email" class="required">Email:</label>
-			<br />
-			<input type="text" id="email" name="email" required />
-			<br />
+				<label for="password" class="required">Password:</label><br />
+				<input type="password" id="password" name="password" required />
 
-			<label for="password" class="required">Password:</label><br />
-			<input type="password" id="password" name="password" required />
+				<div style="display: flex; justify-content: flex-end">
+					<button type="submit" style="font-size: 14px">Login</button>
+				</div>
+			</div>
+		</form>
 
-			<div style="display: flex; justify-content: flex-end">
-				<button type="submit" style="font-size: 14px">Login</button>
+		<div id="userInfo" style="display: none">
+			<h2>Welcome, <span id="username"></span>!</h2>
+			<p><strong>Email:</strong> <span id="userEmail"></span></p>
+			<p><strong>First Name:</strong> <span id="firstName"></span></p>
+			<p><strong>Last Name:</strong> <span id="lastName"></span></p>
+			<div>
+				<button
+					id="logout_btn"
+					style="margin-top: 1em; font-size: 0.9em; display: none"
+				>
+					Logout
+				</button>
 			</div>
 		</div>
-	</form>
 
-	<div id="userInfo" style="display: none">
-		<h2>Welcome, <span id="username"></span>!</h2>
-		<p><strong>Email:</strong> <span id="userEmail"></span></p>
-		<p><strong>First Name:</strong> <span id="firstName"></span></p>
-		<p><strong>Last Name:</strong> <span id="lastName"></span></p>
-	</div>
-	<div>
-		<button
-			id="logout_btn"
-			style="margin-top: 1em; font-size: 0.9em; display: none"
-		>
-			Logout
-		</button>
-	</div>
+		<!-- Invitation Panel -->
+		<div class="invitation_pane" id="invitationPane">
+			<h3 style="margin: 0.5em 0">Invitations</h3>
+			<div id="tabs" style="display: flex; gap: 0.5em; margin-bottom: 0.25em">
+				<button class="tab_btn active" data-status="pending">Pending</button>
+				<button class="tab_btn" data-status="accepted">Accepted</button>
+				<button class="tab_btn" data-status="declined">Declined</button>
+			</div>
+
+			<ul id="invitationList" style="list-style: none; padding-left: 0">
+				<!-- Populated dynamically -->
+			</ul>
+		</div>
+	</section>
 	<script type="module">
-		import { enableEnterKeyAction } from '/templates/static/utils.js';
+		import {
+			enableEnterKeyAction,
+			fetchInvitationsByStatus,
+		} from '/templates/static/utils.js';
 
 		enableEnterKeyAction('#password', 'form#loginForm button[type="submit"]');
+
 		document
 			.getElementById('loginForm')
 			.addEventListener('submit', async function (e) {
@@ -92,9 +150,27 @@
 
 			window.location.reload();
 		}
+
 		window.addEventListener('DOMContentLoaded', async () => {
 			document.getElementById('logout_btn').addEventListener('click', logout);
+
+			const tabs = document.querySelectorAll('.tab_btn');
+
+			tabs.forEach((tab) => {
+				tab.addEventListener('click', async () => {
+					// Remove 'active' from all tabs and add
+					tabs.forEach((t) => t.classList.remove('active'));
+					tab.classList.add('active');
+
+					// Fetch invitations for the clicked tab's status
+					const status = tab.dataset.status;
+					await fetchInvitationsByStatus(CURRENT_USER.id, status);
+				});
+			});
 		});
+		setTimeout(async () => {
+			await fetchInvitationsByStatus(CURRENT_USER.id, 'pending');
+		}, 100);
 	</script>
 </body>
 

@@ -1,5 +1,7 @@
 // static route
 
+import { getMeetupByID } from '/templates/static/meetup.js';
+
 // Enables Enter key to trigger the button click
 export function enableEnterKeyAction(inputSelector, buttonSelector) {
 	document.addEventListener('DOMContentLoaded', () => {
@@ -7,7 +9,9 @@ export function enableEnterKeyAction(inputSelector, buttonSelector) {
 		const button = document.querySelector(buttonSelector);
 
 		if (!input || !button) {
-			console.warn(`Input or button not found: ${inputSelector}, ${buttonSelector}`);
+			console.warn(
+				`Input or button not found: ${inputSelector}, ${buttonSelector}`
+			);
 			return;
 		}
 
@@ -31,4 +35,46 @@ export function formatTimestamp(isoString) {
 	const year = date.getFullYear();
 
 	return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+}
+
+export async function fetchInvitationsByStatus(userID, status) {
+	const res = await fetch('/query', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			query: `
+        query GetInvitations($userID: ID!, $status: InvitationStatus) {
+          invitations(filter: { userID: $userID, status: $status }) {
+            ID
+            Status
+            MeetupID
+          }
+        }
+      `,
+			variables: {
+				userID,
+				status,
+			},
+		}),
+	});
+
+	const result = await res.json();
+	const invitations = result?.data?.invitations || [];
+
+	const meetupInvitations = invitations.map(async (meetup, inx) => {
+		const m = await await getMeetupByID(meetup.MeetupID);
+		const li = document.createElement('li');
+		li.textContent = `${inx + 1}. Invitation ID: ${m.id} — Meetup: ${m.name}`;
+		invitationList.appendChild(li);
+	});
+
+	const invitationList = document.getElementById('invitationList');
+	invitationList.innerHTML = '';
+
+	if (invitations.length === 0) {
+		invitationList.innerHTML = `<p>No invitations found for status "${status}".</p>`;
+		return;
+	}
+
+	return meetupInvitations;
 }

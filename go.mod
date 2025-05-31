@@ -6,7 +6,13 @@ require (
 	github.com/99designs/gqlgen v0.17.63
 	github.com/go-pg/pg/v10 v10.14.0
 	github.com/pkg/errors v0.9.1
+	github.com/redis/go-redis/v9 v9.9.0
 	github.com/vektah/gqlparser/v2 v2.5.21
+)
+
+require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 )
 
 require (

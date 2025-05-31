@@ -38,6 +38,11 @@ func (r *mutationResolver) Logout(ctx context.Context, userID string) (*models.U
 	return r.Domain.Logout(ctx, userID)
 }
 
+// AcceptInvite is the resolver for the acceptInvite field.
+func (r *mutationResolver) AcceptInvite(ctx context.Context, meetupID string, userID string) (*models.Meetup, error) {
+	panic(fmt.Errorf("not implemented: AcceptInvite - acceptInvite"))
+}
+
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*models.User, error) {
 	return r.Domain.UserRepo.GetUserByID(id)

@@ -34,38 +34,11 @@ func (r *InvitationRepo) IsUserInvited(meetupID string, userID string) (bool, er
 	return exists, nil
 }
 
-// func (r *InvitationRepo) InviteUser(meetupID string, userID string) (*models.Invitation, error) {
-// 	invitation := &models.Invitation{
-// 		MeetupID: &models.Meetup{ID: meetupID}, // ✅ wrap ID in struct
-// 		UserID:   &models.User{ID: userID},
-// 		Status: "pending",
-// 	}
-
-// 	_, err := r.DB.Model(invitation).Insert()
-// 	if err != nil {
-// 		log.Printf("❌ DB insert error: %v", err)
-// 		return nil, err
-// 	}
-
-// 	return invitation, nil
-// }
-
 func (r *InvitationRepo) InviteUser(meetupID string, userID string) (invitation *models.Invitation, err error) {
 	if r.DB == nil {
 		log.Fatal("💥 r.DB is nil in InviteUser")
 	}
 	var id string
-
-	// meetupId, err := strconv.ParseInt(meetupID, 10, 64)
-	// if err != nil {
-	// 	// handle the error
-	// 	fmt.Println("Conversion failed:", err)
-	// }
-	// // userId, err := strconv.ParseInt(userID, 10, 64)
-	// if err != nil {
-	// 	// handle the error
-	// 	fmt.Println("Conversion failed:", err)
-	// }
 
 	//! Insert and get back the generated ID (assuming it's UUID or SERIAL stored as string)
 	_, err = r.DB.QueryOne(
@@ -80,25 +53,17 @@ func (r *InvitationRepo) InviteUser(meetupID string, userID string) (invitation 
 		return nil, err
 	}
 
-	// Optionally: fetch user and meetup if you want them populated in the response
-	// Or just set minimal structs if only IDs are needed
-
 	invitation = &models.Invitation{
 		ID:     id,
 		Status: models.InvitationStatus("pending"), // cast if needed
-		// 	MeetupID: &models.Meetup{ID: meetupID},       //* lightweight reference
-		// 	UserID:   &models.User{ID: userID},           //* lightweight reference
+		// Meetup: &models.Meetup{ID: meetupID},       //* lightweight reference
+		// UserID:   &models.User{ID: userID},           //* lightweight reference
 		MeetupID: meetupID,
 		UserID:   userID,
 	}
 
 	return invitation, nil
 }
-
-// func (r *InvitationRepo) RemoveUser(meetupID string, userID int64) error {
-// 	_, err := r.DB.Exec(`DELETE FROM meetup_invitations WHERE meetup_id = ? AND user_id = ?`, meetupID, userID)
-// 	return err
-// }
 
 func (r *InvitationRepo) RemoveUser(input models.InviteUserInput) (*models.User, error) {
 	// Optional: check if the invitation exists
@@ -174,4 +139,34 @@ func (d *InvitationRepo) GetMeetupsUserIsInvitedTo(userID string) ([]*models.Mee
 		Select()
 
 	return meetups, err
+}
+
+func (r *InvitationRepo) GetInvitations(filter *models.InvitationFilter, limit, offset *int32) ([]*models.Invitation, error) {
+	var invitations []*models.Invitation
+
+	query := r.DB.Model(&invitations).Order("id ASC")
+
+	if filter != nil {
+		if filter.UserID != "" {
+			query = query.Where("user_id = ?", filter.UserID)
+		}
+		if filter.Status != nil && *filter.Status != "" {
+			query = query.Where("status = ?", *filter.Status)
+		}
+	}
+
+	if limit != nil {
+		query.Limit(int(*limit))
+	}
+
+	if offset != nil {
+		query.Offset(int(*offset))
+	}
+
+	err := query.Select()
+	if err != nil {
+		return nil, err
+	}
+
+	return invitations, nil
 }

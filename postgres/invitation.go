@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -169,4 +170,56 @@ func (r *InvitationRepo) GetInvitations(filter *models.InvitationFilter, limit, 
 	}
 
 	return invitations, nil
+}
+
+func (r *InvitationRepo) AcceptInvitation(userID string, invitationID string) (*models.Invitation, error) {
+	var invitation models.Invitation
+
+	err := r.DB.Model(&invitation).
+		Where("id = ?", invitationID).
+		Where("user_id = ?", userID).
+		Select()
+
+	if err != nil {
+		if errors.Is(err, pg.ErrNoRows) {
+			return nil, fmt.Errorf("invitation not found for meetup %s and user %s", invitationID, userID)
+		}
+		return nil, err
+	}
+
+	// Update the status to "accepted"
+	invitation.Status = models.InvitationStatus("accepted")
+
+	_, updateErr := r.DB.Model(&invitation).WherePK().Update()
+	if updateErr != nil {
+		return nil, updateErr
+	}
+
+	return &invitation, nil
+}
+
+func (r *InvitationRepo) DeclineInvitation(userID, invitationID string) (*models.Invitation, error) {
+	var invitation models.Invitation
+
+	err := r.DB.Model(&invitation).
+		Where("id = ?", invitationID).
+		Where("user_id = ?", userID).
+		Select()
+
+	if err != nil {
+		if errors.Is(err, pg.ErrNoRows) {
+			return nil, fmt.Errorf("invitation not found for meetup %s and user %s", invitationID, userID)
+		}
+		return nil, err
+	}
+
+	// Update the status to "accepted"
+	invitation.Status = models.InvitationStatus("declined")
+
+	_, updateErr := r.DB.Model(&invitation).WherePK().Update()
+	if updateErr != nil {
+		return nil, updateErr
+	}
+
+	return &invitation, nil
 }

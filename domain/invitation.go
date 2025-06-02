@@ -102,7 +102,27 @@ func (d *Domain) LeaveMeetup(ctx context.Context, meetupID string) (bool, error)
 	return true, nil
 }
 
-
-func(d *Domain) GetInvitations(filter *models.InvitationFilter, limit, offset *int32)	([]*models.Invitation, error) {
+func (d *Domain) GetInvitations(filter *models.InvitationFilter, limit, offset *int32) ([]*models.Invitation, error) {
 	return d.InvitationRepo.GetInvitations(filter, limit, offset)
+}
+
+func (d *Domain) AcceptInvitation(ctx context.Context, invitationID string) (*models.Invitation, error) {
+	currentUser, err := middleware.GetCurrentUserFromCTX(ctx)
+	if err != nil {
+		return nil, ErrUnauthenticated
+	}
+	userID := currentUser.ID
+
+	return d.InvitationRepo.AcceptInvitation(userID, invitationID)
+}
+
+func (d *Domain) DeclineInvitation(ctx context.Context, invitationID string) (*models.Invitation, error) {
+	currentUser, err := middleware.GetCurrentUserFromCTX(ctx)
+
+	if err != nil {
+		return nil, ErrUnauthenticated
+	}
+	userID := currentUser.ID
+
+	return d.InvitationRepo.DeclineInvitation(userID, invitationID)
 }

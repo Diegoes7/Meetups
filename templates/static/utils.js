@@ -61,10 +61,35 @@ export async function fetchInvitationsByStatus(userID, status) {
 	const result = await res.json();
 	const invitations = result?.data?.invitations || [];
 
-	const meetupInvitations = invitations.map(async (meetup, inx) => {
-		const m = await await getMeetupByID(meetup.MeetupID);
+	const meetupInvitations = invitations.map(async (invitation, inx) => {
+		const m = await await getMeetupByID(invitation.MeetupID);
 		const li = document.createElement('li');
-		li.textContent = `${inx + 1}. Invitation ID: ${m.id} — Meetup: ${m.name}`;
+		const acceptBtn =
+			invitation.Status === 'pending'
+				? `<button
+				data-invitation-id='${invitation.ID}'
+				data-meetup-name='${m.name}'
+				class='accept_btn'
+			>
+				Accept
+			</button>`
+				: '';
+		const declineBtn =
+			invitation.Status === 'pending'
+				? `<button
+				data-invitation-id='${invitation.ID}'
+				data-meetup-name='${m.name}'
+				class='decline_btn'
+			>
+				Decline
+			</button>`
+				: '';
+		li.innerHTML = `<div style="display: flex; gap: 0.5em; justify-content: space-evenly; align-items: baseline;
+    border: 1px solid #ccc; border-radius: .25em; padding: .5em;">
+		${inx + 1}. Invitation ID: ${invitation.ID} — Meetup: ${m.name} 
+		${acceptBtn} 
+		${declineBtn} 
+		</div>`;
 		invitationList.appendChild(li);
 	});
 
@@ -72,9 +97,67 @@ export async function fetchInvitationsByStatus(userID, status) {
 	invitationList.innerHTML = '';
 
 	if (invitations.length === 0) {
-		invitationList.innerHTML = `<p>No invitations found for status "${status}".</p>`;
+		invitationList.innerHTML = `<p style='margin: 0.25em;'>No invitations found for status "${status}".</p>`;
 		return;
 	}
 
 	return meetupInvitations;
+}
+
+export async function acceptInvitation(invitationId) {
+	const res = await fetch('/query', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			query: `
+        mutation AcceptInvitation($invitationID: ID!) {
+          acceptInvitation(invitationID: $invitationID) {
+            ID
+            Status
+          }
+        }
+      `,
+			variables: { invitationID: invitationId },
+		}),
+	});
+
+	const result = await res.json();
+	const accepted = result?.data?.acceptInvitation;
+
+	if (!accepted) {
+		console.error('Failed to accept invitation:', result.errors);
+	} else {
+		console.log(
+			`Accepted invitation ${accepted.ID}, new status: ${accepted.Status}`
+		);
+	}
+}
+
+export async function declineInvitation(invitationId) {
+	const res = await fetch('/query', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			query: `
+        mutation DeclineInvitation($invitationID: ID!) {
+          declineInvitation(invitationID: $invitationID) {
+            ID
+            Status
+          }
+        }
+      `,
+			variables: { invitationID: invitationId },
+		}),
+	});
+
+	const result = await res.json();
+	const declined = result?.data?.declineInvitation;
+
+	if (!declined) {
+		console.error('Failed to decline invitation:', result.errors);
+	} else {
+		console.log(
+			`Declined invitation ${declined.ID}, new status: ${declined.Status}`
+		);
+	}
 }

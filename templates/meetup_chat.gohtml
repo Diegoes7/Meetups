@@ -2,6 +2,7 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<link rel="icon" type="image/png" href="/templates/static/ai_agent.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<style>
 						.meetup_layout {
@@ -139,7 +140,6 @@
 		import { formatTimestamp } from '/templates/static/utils.js';
 		import { handleDelete, handleEdit } from '/templates/static/chat.js';
 		import { leaveMeetup, getMeetupByID } from '/templates/static/meetup.js';
-		console.log(formatTimestamp(Date.now()));
 
 		let CURRENT_USER = null;
 		let CURRENT_MEETUP = null;
@@ -207,8 +207,8 @@
 			const query = `
 						mutation InviteUser($input: InviteUserInput!) {
 						  inviteUser(input: $input) {
-						   		id
-						    	username
+						   	id
+						    username
 								email
 								firstName
 								lastName
@@ -321,20 +321,21 @@
 			sendMessageToSocket(message);
 
 			// Update the UI
+			const formatted = formatTimestamp(new Date());
+
 			const messageList = document.getElementById('message-list');
 			const li = document.createElement('li');
 			li.id = `message-${savedMessage.id}`; // Assign the ID
+
 			const content = `<div style='display: flex; align-items: center;'>
-		  							  <strong>You:</strong> ${savedMessage.content} sent: <span>${formatTimestamp(
-				new Date().toUTCString()
-			)}</span>
-		  							  <button class="edit-btn" data-id="${savedMessage.id}"
-											}')" title="Edit" style="background:none;border:none;cursor:pointer; margin:0;">✏️</button>
-		  							  <button class="delete-btn" data-id="${
-												savedMessage.id
-											}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0">🗑️</button>
-		  											</div>
-														`;
+		  					<div><strong>You:</strong> <span id="message-content-${savedMessage.id}">${savedMessage.content}<span></div>
+		  						<button class="delete-btn" data-id="${savedMessage.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
+		  						<button class="edit-btn" data-id="${savedMessage.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
+								</div>
+									<div>
+									<span> sent: <span>${formatted}</span>
+								<div>
+		  			</div>`;
 			li.innerHTML = content;
 			messageList.appendChild(li);
 			input.value = '';
@@ -375,15 +376,19 @@
 				const chatter =
 					CURRENT_USER.id === m.sender.id
 						? `<div style='display: flex; align-items: center;'>
-		  				<strong>You:</strong> <span id="message-content-${m.id}">${m.content}</span> sent: <span>${formatted}</span>
-		  				<button class="edit-btn" data-id="${m.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0;">✏️</button>
-		  				<button class="delete-btn" data-id="${m.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0">🗑️</button>
+		  					<div><strong>You:</strong> <span id="message-content-${m.id}">${m.content}<span></div>
+		  						<button class="delete-btn" data-id="${m.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
+		  						<button class="edit-btn" data-id="${m.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
+								</div>
+									<div>
+									<span> sent: <span>${formatted}</span>
+								<div>
 		  		</div>`
 						: `
 		  		<div style="padding-left:1em;">
-		  		  ${m.content} <strong>: ${m.sender.username}</strong> sent: <span>${formatted}</span>
+		  		  <div>${m.content}<strong>: ${m.sender.username}</strong></div> 
+						sent: <span>${formatted}</span>
 		  		</div>`;
-
 				li.innerHTML = chatter;
 				list.appendChild(li);
 			});

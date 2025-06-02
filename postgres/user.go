@@ -45,18 +45,4 @@ func (m *UserRepo) GetUsers() ([]*models.User, error) {
 		return nil, err
 	}
 	return users, nil
-
-	// if filter != nil {
-	// 	if filter.Name != nil && *filter.Name != "" {
-	// 		query.Where("name ILIKE ? ", fmt.Sprintf("%%%s%%", *filter.Name))
-	// 	}
-	// }
-
-	// if limit != nil {
-	// 	query.Limit(int(*limit))
-	// }
-
-	// if limit != nil {
-	// 	query.Offset(int(*offset))
-	// }
 }

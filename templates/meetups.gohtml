@@ -1,5 +1,5 @@
 {{ define "meetups" }}
-<ol>
+<ol id="meetups">
 	{{
 		range.Meetups
 	}}
@@ -69,13 +69,13 @@ import { fetchInvitedUsers } from '/templates/static/meetup.js'
 
       const isCreator = CURRENT_USER && CURRENT_USER.id === meetup.userID;
       const deleteButtonHTML = isCreator
-        ? `<button class="delete_button" onclick="deleteMeetup('${meetup.id}')">Delete</button>`
+        ? `<button class="delete_button" data-meetup-id="${meetup.id}">Delete</button>`
         : '';
 
       const isInvited = invitedUsers.some(u => u.id === CURRENT_USER.id);
-      const enterBtn =  (isInvited || isCreator) ? `<button class="enter-btn" data-meetup-id="${meetup.id}">Enter</button>` : '';
+      const enterBtn =  (isInvited || isCreator) ? `<button class="enter_btn" data-meetup-id="${meetup.id}">Enter</button>` : '';
 
-			meetupsHTML += ` <li class="meetup">
+			meetupsHTML += ` <li id="single_meetup" class="meetup">
   											  <div style="display: flex; justify-content: space-between; align-items: flex-start;flex-direction: column">
   											    <span> <strong>${i+1}. ${meetup.name}</strong></span>
 														<span style="flex: 1; word-break: break-word;">Info: ${meetup.description}</span>
@@ -143,17 +143,23 @@ import { fetchInvitedUsers } from '/templates/static/meetup.js'
 	}
 
 	window.addEventListener('DOMContentLoaded', async () => {
-	// window.onload = async function () {
 		// Call your other fetch data function
 		await checkSession();
 		await fetchData();
 
-		document.querySelectorAll('.enter-btn').forEach(btn => {
+		document.querySelectorAll('.enter_btn').forEach(btn => {
 			btn.addEventListener('click', () => {
 				const meetupId = btn.dataset.meetupId;
 				goToMeetup(meetupId);
 			});
 		});
 	});
+
+		document.getElementById('meetups').addEventListener('click', async (e) => {
+					if (e.target.matches('.delete_button')) {
+						const meetupId = e.target.getAttribute('data-meetup-id');
+						deleteMeetup(meetupId);
+					}
+				});;
 </script>
 {{ end }}

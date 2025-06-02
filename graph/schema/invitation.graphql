@@ -23,3 +23,8 @@ extend type Query {
 		offset: Int = 0
 	): [Invitation]!
 }
+
+extend type Mutation {
+	acceptInvitation(invitationID: ID!): Invitation!
+	declineInvitation(invitationID: ID!): Invitation!
+}

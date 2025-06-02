@@ -10,6 +10,16 @@ import (
 	"github.com/Diegoes7/meetups/models"
 )
 
+// AcceptInvitation is the resolver for the acceptInvitation field.
+func (r *mutationResolver) AcceptInvitation(ctx context.Context, invitationID string) (*models.Invitation, error) {
+	return r.Domain.AcceptInvitation(ctx, invitationID)
+}
+
+// DeclineInvitation is the resolver for the declineInvitation field.
+func (r *mutationResolver) DeclineInvitation(ctx context.Context, invitationID string) (*models.Invitation, error) {
+	return r.Domain.DeclineInvitation(ctx, invitationID)
+}
+
 // Invitations is the resolver for the invitations field.
 func (r *queryResolver) Invitations(ctx context.Context, filter *models.InvitationFilter, limit *int32, offset *int32) ([]*models.Invitation, error) {
 	return r.Domain.GetInvitations(filter, limit, offset)

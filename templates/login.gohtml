@@ -32,6 +32,29 @@
 			flex: 1 1 auto;
 		}
 
+		.decline_btn {
+			background-color: #e53935;
+			color: white;
+			border: none;
+			padding: 0.4em 0.8em;
+			/* margin-left: 0.5em; */
+			border-radius: 4px;
+			cursor: pointer;
+			font-weight: bold;
+			transition: background-color 0.2s ease;
+		}
+		.delete_button:hover {
+			background-color: #c62828;
+		}
+
+		button:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+			background-color: #ccc; /* or any subdued color */
+			color: #555; /* optional */
+			border-color: #999; /* optional */
+		}
+
 		/* Responsive adjustment */
 		@media (max-width: 690px) {
 			.flex_wrapper {
@@ -80,13 +103,25 @@
 		<!-- Invitation Panel -->
 		<div class="invitation_pane" id="invitationPane">
 			<h3 style="margin: 0.5em 0">Invitations</h3>
-			<div id="tabs" style="display: flex; gap: 0.5em; margin-bottom: 0.25em">
+			<div
+				id="tabs"
+				style="
+					display: flex;
+					gap: 0.5em;
+					margin-bottom: 0.25em;
+					border-bottom: 1px solid #ccc;
+					padding-bottom: 0.75em;
+				"
+			>
 				<button class="tab_btn active" data-status="pending">Pending</button>
 				<button class="tab_btn" data-status="accepted">Accepted</button>
 				<button class="tab_btn" data-status="declined">Declined</button>
 			</div>
 
-			<ul id="invitationList" style="list-style: none; padding-left: 0">
+			<ul
+				id="invitationList"
+				style="list-style: none; padding-left: 0; style='margin: 0.25em;"
+			>
 				<!-- Populated dynamically -->
 			</ul>
 		</div>
@@ -95,6 +130,8 @@
 		import {
 			enableEnterKeyAction,
 			fetchInvitationsByStatus,
+			acceptInvitation,
+			declineInvitation,
 		} from '/templates/static/utils.js';
 
 		enableEnterKeyAction('#password', 'form#loginForm button[type="submit"]');
@@ -167,10 +204,45 @@
 					await fetchInvitationsByStatus(CURRENT_USER.id, status);
 				});
 			});
+
+			document
+				.getElementById('invitationList')
+				.addEventListener('click', async (e) => {
+					if (e.target.matches('.accept_btn')) {
+						const btn = e.target;
+						const invitationId = btn.getAttribute('data-invitation-id');
+						const meetupName = btn.getAttribute('data-meetup-name');
+						const res = await acceptInvitation(invitationId);
+						alert(
+							`Accepted invitation Name /ID/: ${meetupName} /${invitationId}/`
+						);
+						btn.disabled = true;
+						btn.textContent = 'Accepted';
+						// window.location.reload();
+					}
+				});
 		});
+
+		document
+			.getElementById('invitationList')
+			.addEventListener('click', async (e) => {
+				if (e.target.matches('.decline_btn')) {
+					const btn = e.target;
+					const invitationId = btn.getAttribute('data-invitation-id');
+					const meetupName = btn.getAttribute('data-meetup-name');
+					const res = await declineInvitation(invitationId);
+					alert(
+						`Declined invitation Name /ID/: ${meetupName} /${invitationId}/`
+					);
+					btn.disabled = true;
+					btn.textContent = 'Declined';
+					// window.location.reload();
+				}
+			});
+
 		setTimeout(async () => {
 			await fetchInvitationsByStatus(CURRENT_USER.id, 'pending');
-		}, 100);
+		}, 500);
 	</script>
 </body>
 

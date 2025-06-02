@@ -44,19 +44,17 @@ export async function handleEdit(messageId) {
 		const result = await res.json();
 		const updatedMessage = result.data?.editMessage;
 		if (updatedMessage) {
+			const formatted = formatTimestamp(new Date());
 			const el = document.getElementById(`message-${messageId}`);
-			const htmlContent = `<div style='display: flex; align-items: center;'> 
-  							  <strong>You:</strong> <span id="message-content-${updatedMessage.id}">${
-				updatedMessage.content
-			}</span> sent: <span>${formatTimestamp(new Date())}</span>
-  							  <button class="edit-btn" data-id="${
-										updatedMessage.id
-									}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0;">✏️</button>
-  							  <button class="delete-btn" data-id="${
-										updatedMessage.id
-									}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0">🗑️</button>
-  							</div>
-								`;
+			const htmlContent = `<div style='display: flex; align-items: center;'>
+		  					<div><strong>You:</strong> <span id="message-content-${updatedMessage.id}">${updatedMessage.content}<span></div>
+		  						<button class="delete-btn" data-id="${updatedMessage.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
+		  						<button class="edit-btn" data-id="${updatedMessage.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
+								</div>
+									<div>
+									<span> sent: <span>${formatted}</span>
+								<div>
+		  				</div>`;
 			if (el) el.innerHTML = htmlContent;
 		} else {
 			alert('Failed to edit message');

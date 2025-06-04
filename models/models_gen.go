@@ -19,7 +19,7 @@ type Invitation struct {
 
 type InvitationFilter struct {
 	Status *InvitationStatus `json:"status,omitempty"`
-	UserID string            `json:"userID"`
+	UserID string            `json:"userID,omitempty"`
 }
 
 type InviteUserInput struct {

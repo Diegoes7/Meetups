@@ -99,10 +99,12 @@
 			.meetup {
 				display: flex;
 				justify-content: space-between;
+				flex-wrap: wrap;
 				margin-bottom: 1em;
 				border: 1px solid #d7c4c4;
 				padding: 0.75em 0.5em 0.75em 1em;
 				border-radius: 4px;
+				width: 90%;
 			}
 		</style>
 		<title>Meetup App</title>
@@ -135,7 +137,6 @@
 						document.getElementById('lastName').textContent = user.lastName;
 						document.getElementById('userInfo').style.display = 'block';
 						document.getElementById('logout_btn').style.display = 'block';
-
 					}
 				} catch (error) {
 					console.warn(error.message);
@@ -163,7 +164,7 @@
 				<h2 style="margin: 0.5em 0">Meetups</h2>
 				{{ template "create_meetup_modal" . }}
 			</div>
-			<ol id="meetups">
+			<ol style="padding: 0; margin-left: 0" id="meetups">
 				{{ template "meetups" . }}
 			</ol>
 		</section>

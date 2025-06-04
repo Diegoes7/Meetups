@@ -7,7 +7,7 @@ enum InvitationStatus {
 type Invitation {
 	ID: ID!
 	MeetupID: ID!
-	UserID: ID!
+	UserID: ID
 	Status: InvitationStatus!
 }
 

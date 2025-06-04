@@ -10,7 +10,7 @@ import (
 )
 
 type Invitation struct {
-	tableName struct{} `pg:"meetup_invitations"`
+  tableName struct{} `pg:"meetup_invitations"`
 	ID       string           `json:"ID"`
 	MeetupID string           `json:"MeetupID"`
 	UserID   string           `json:"UserID"`
@@ -19,7 +19,7 @@ type Invitation struct {
 
 type InvitationFilter struct {
 	Status *InvitationStatus `json:"status,omitempty"`
-	UserID string            `json:"userID,omitempty"`
+	UserID *string           `json:"userID,omitempty"`
 }
 
 type InviteUserInput struct {

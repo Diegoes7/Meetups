@@ -148,7 +148,7 @@ func (r *InvitationRepo) GetInvitations(filter *models.InvitationFilter, limit, 
 	query := r.DB.Model(&invitations).Order("id ASC")
 
 	if filter != nil {
-		if filter.UserID != "" {
+		if filter.UserID != nil {
 			query = query.Where("user_id = ?", filter.UserID)
 		}
 		if filter.Status != nil && *filter.Status != "" {

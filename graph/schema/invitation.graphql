@@ -7,13 +7,13 @@ enum InvitationStatus {
 type Invitation {
 	ID: ID!
 	MeetupID: ID!
-	UserID: ID
+	UserID: ID!
 	Status: InvitationStatus!
 }
 
 input InvitationFilter {
 	status: InvitationStatus
-	userID: ID!
+	userID: ID
 }
 
 extend type Query {

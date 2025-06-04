@@ -20,7 +20,7 @@ func NewConnections(ctx context.Context) (*Connections, error) {
 	pgOptions := &pg.Options{
 		Addr:     fmt.Sprintf("%s:%s", getEnv("POSTGRES_HOST", "localhost"), getEnv("POSTGRES_PORT", "5432")),
 		User:     getEnv("POSTGRES_USER", "postgres"),
-		Password: getEnv("POSTGRES_PASSWORD", "postgres"),
+		Password: getEnv("POSTGRES_PASSWORD", "victoria7"),
 		Database: getEnv("POSTGRES_DB", "meetup_dev"),
 	}
 	db := pg.Connect(pgOptions)

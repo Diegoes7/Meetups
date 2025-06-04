@@ -43,7 +43,7 @@ export async function fetchInvitationsByStatus(userID, status) {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({
 			query: `
-        query GetInvitations($userID: ID!, $status: InvitationStatus) {
+        query GetInvitations($userID: ID, $status: InvitationStatus) {
           invitations(filter: { userID: $userID, status: $status }) {
             ID
             Status
@@ -60,6 +60,13 @@ export async function fetchInvitationsByStatus(userID, status) {
 
 	const result = await res.json();
 	const invitations = result?.data?.invitations || [];
+
+	const invitationList = document.getElementById('invitationList');
+
+	if (!userID) {
+		invitationList.innerHTML = `<p style='margin: 0.25em;'>Authenticated User is required. Please, Login.</p>`;
+		return;
+	}
 
 	const meetupInvitations = invitations.map(async (invitation, inx) => {
 		const m = await await getMeetupByID(invitation.MeetupID);
@@ -84,16 +91,19 @@ export async function fetchInvitationsByStatus(userID, status) {
 				Decline
 			</button>`
 				: '';
-		li.innerHTML = `<div style="display: flex; gap: 0.5em; justify-content: space-evenly; align-items: baseline;
-    border: 1px solid #ccc; border-radius: .25em; padding: .5em;">
-		${inx + 1}. Invitation ID: ${invitation.ID} — Meetup: ${m.name} 
-		${acceptBtn} 
-		${declineBtn} 
+		li.innerHTML = `<div style="display:flex; justify-content: space-between; align-items: baseline; 
+		border: 1px solid #ccc; border-radius: .25em; padding: .5em; margin-bottom: 0.5em; gap:2em">
+			<div style="display: flex; gap: 0.5em; justify-content: flex-start; align-items: baseline;">
+			${inx + 1}. Invitation ID: ${invitation.ID} — Meetup: ${m.name} 
+			</div>
+						<div style="display:flex; flex-wrap: wrap; gap: 0.5em" >
+							${acceptBtn} 
+							${declineBtn} 
+						</div>
 		</div>`;
 		invitationList.appendChild(li);
 	});
 
-	const invitationList = document.getElementById('invitationList');
 	invitationList.innerHTML = '';
 
 	if (invitations.length === 0) {

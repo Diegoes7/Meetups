@@ -55,3 +55,7 @@ func nilConnectionError(service string, err error) error {
 	log.Printf("❌ %s connection failed: %v", service, err)
 	return fmt.Errorf("%s connection error: %w", service, err)
 }
+
+
+//$ transfer the local data to container
+// pg_dump -U postgres -h localhost -p 5432 -d meetup_dev -F p -f ./db/seed.sql

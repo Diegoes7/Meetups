@@ -15,11 +15,11 @@ import (
 	"github.com/Diegoes7/meetups/domain"
 	"github.com/Diegoes7/meetups/graph"
 	"github.com/Diegoes7/meetups/handlers"
+	"github.com/Diegoes7/meetups/internal/db"
 	"github.com/Diegoes7/meetups/loader"
 	customMiddleware "github.com/Diegoes7/meetups/middleware"
 	"github.com/Diegoes7/meetups/models"
 	"github.com/Diegoes7/meetups/postgres"
-	"github.com/Diegoes7/meetups/internal/db"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
@@ -165,24 +165,18 @@ func main() {
 	// http.HandleFunc("/subscriptions", handlers.HandleSubscription)
 	router.HandleFunc("/subscriptions", handlers.HandleSubscription)
 
-	// router.Get("/meetup/{meetupID}", func(w http.ResponseWriter, r *http.Request) {
-	// 	tmpl, err := template.ParseFiles("templates/meetup_chat.gohtml")
-	// 	if err != nil {
-	// 		http.Error(w, "Error loading template", http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	tmpl.Execute(w, nil)
-	// })
-
 	//! Move GraphQL playground to "/playground"
 	router.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
 
 	//! GraphQL API route
+	renderURL := os.Getenv("RENDER_EXTERNAL_URL") // or any variable you set in Render
+	if renderURL == "" {
+		renderURL = "http://localhost:" + port
+	}
 	router.Handle("/query", loader.DataLoaderMiddleware(DB, queryHandler))
 	// http.Handle("/query", handler.GraphQL(graph.NewExecutableSchema(c)))
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL actual website", port)
-	log.Printf("connect to http://localhost:%s/playground for GraphQL playground", port)
+	log.Printf("connect to for %s/ GraphQL actual website", renderURL)
+	log.Printf("connect to %s/playground for GraphQL playground", renderURL)
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }
-

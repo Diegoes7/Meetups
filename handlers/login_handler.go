@@ -64,7 +64,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := http.Post("http://localhost:8080/query", "application/json", bytes.NewReader(body))
+	// resp, err := http.Post("http://localhost:8080/query", "application/json", bytes.NewReader(body))
+	graphqlURL := os.Getenv("RENDER_EXTERNAL_URL")
+	if graphqlURL == "" {
+		graphqlURL = "http://localhost:8080"
+	}
+	graphqlURL += "/query"
+
+	resp, err := http.Post(graphqlURL, "application/json", bytes.NewReader(body))
 	if err != nil {
 		http.Error(w, "Failed to send request to GraphQL endpoint", http.StatusInternalServerError)
 		return
@@ -102,7 +109,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		// Secure:   true, // Set to false during local dev if not using HTTPS
-		Secure: os.Getenv("ENV") == "production",
+		Secure:   os.Getenv("ENV") == "production",
 		SameSite: http.SameSiteLaxMode,
 	})
 

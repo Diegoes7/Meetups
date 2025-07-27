@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/Diegoes7/meetups/models"
 )
@@ -40,9 +41,15 @@ func MeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := json.Marshal(payload)
+	// Dynamically resolve GraphQL URL
+	graphqlURL := os.Getenv("RENDER_EXTERNAL_URL")
+	if graphqlURL == "" {
+		graphqlURL = "http://localhost:8080"
+	}
+	graphqlURL += "/query"
 
 	// Make the request to your GraphQL API with the token
-	req, err := http.NewRequest("POST", "http://localhost:8080/query", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", graphqlURL, bytes.NewReader(body))
 	if err != nil {
 		// Return empty object if there's an error
 		w.Header().Set("Content-Type", "application/json")

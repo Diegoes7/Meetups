@@ -137,7 +137,7 @@
 		<title>Active Meetup</title>
 	</head>
 	<script type="module">
-		import { formatTimestamp } from '/templates/static/utils.js';
+		import { formatTimestamp, BASE_URL } from '/templates/static/utils.js';
 		import { handleDelete, handleEdit } from '/templates/static/chat.js';
 		import { leaveMeetup, getMeetupByID } from '/templates/static/meetup.js';
 
@@ -205,16 +205,16 @@
 			const userId = parseInt(select.value);
 
 			const query = `
-						mutation InviteUser($input: InviteUserInput!) {
-						  inviteUser(input: $input) {
-						   	id
-						    username
-								email
-								firstName
-								lastName
-						  	}
-							}
-						`;
+							mutation InviteUser($input: InviteUserInput!) {
+							  inviteUser(input: $input) {
+							   	id
+							    username
+									email
+									firstName
+									lastName
+							  	}
+								}
+							`;
 
 			const variables = {
 				input: {
@@ -261,13 +261,13 @@
 
 		async function sendMessageToServer(message) {
 			const mutation = `
-							mutation SendMessage($input: NewMessageInput!) {
-								sendMessage(input: $input) {
-									id
-									content
+								mutation SendMessage($input: NewMessageInput!) {
+									sendMessage(input: $input) {
+										id
+										content
+									}
 								}
-							}
-						`;
+							`;
 
 			const variables = {
 				input: {
@@ -328,14 +328,14 @@
 			li.id = `message-${savedMessage.id}`; // Assign the ID
 
 			const content = `<div style='display: flex; align-items: center;'>
-		  					<div><strong>You:</strong> <span id="message-content-${savedMessage.id}">${savedMessage.content}<span></div>
-		  						<button class="delete-btn" data-id="${savedMessage.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
-		  						<button class="edit-btn" data-id="${savedMessage.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
-								</div>
+			  					<div><strong>You:</strong> <span id="message-content-${savedMessage.id}">${savedMessage.content}<span></div>
+			  						<button class="delete-btn" data-id="${savedMessage.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
+			  						<button class="edit-btn" data-id="${savedMessage.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
+									</div>
+										<div>
+										<span> sent: <span>${formatted}</span>
 									<div>
-									<span> sent: <span>${formatted}</span>
-								<div>
-		  			</div>`;
+			  			</div>`;
 			li.innerHTML = content;
 			messageList.appendChild(li);
 			input.value = '';
@@ -343,18 +343,18 @@
 
 		async function fetchMessages() {
 			const query = `
-						query GetMessages($meetupID: ID!) {
-							getMessagesByMeetup(meetupID: $meetupID) {
-								id
-								content
-								timestamp
-								sender {
+							query GetMessages($meetupID: ID!) {
+								getMessagesByMeetup(meetupID: $meetupID) {
 									id
-									username
+									content
+									timestamp
+									sender {
+										id
+										username
+									}
 								}
 							}
-						}
-					`;
+						`;
 
 			const res = await fetch('/query', {
 				method: 'POST',
@@ -376,19 +376,19 @@
 				const chatter =
 					CURRENT_USER.id === m.sender.id
 						? `<div style='display: flex; align-items: center;'>
-		  					<div><strong>You:</strong> <span id="message-content-${m.id}">${m.content}<span></div>
-		  						<button class="delete-btn" data-id="${m.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
-		  						<button class="edit-btn" data-id="${m.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
-								</div>
+			  					<div><strong>You:</strong> <span id="message-content-${m.id}">${m.content}<span></div>
+			  						<button class="delete-btn" data-id="${m.id}" title="Delete" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">🗑️</button>
+			  						<button class="edit-btn" data-id="${m.id}" title="Edit" style="background:none;border:none;cursor:pointer; margin:0; padding:0.5em">✏️</button>
+									</div>
+										<div>
+										<span> sent: <span>${formatted}</span>
 									<div>
-									<span> sent: <span>${formatted}</span>
-								<div>
-		  		</div>`
+			  		</div>`
 						: `
-		  		<div style="padding-left:1em;">
-		  		  <div>${m.content}<strong>: ${m.sender.username}</strong></div> 
-						sent: <span>${formatted}</span>
-		  		</div>`;
+			  		<div style="padding-left:1em;">
+			  		  <div>${m.content}<strong>: ${m.sender.username}</strong></div>
+							sent: <span>${formatted}</span>
+			  		</div>`;
 				li.innerHTML = chatter;
 				list.appendChild(li);
 			});
@@ -398,11 +398,11 @@
 			const meetupId = '{{ .Meetup.ID }}';
 
 			const query = `
-									mutation StartMeetup($meetupID: ID!) {
-										startMeetup(meetupID: $meetupID)
+										mutation StartMeetup($meetupID: ID!) {
+											startMeetup(meetupID: $meetupID)
 
-									}
-								`;
+										}
+									`;
 
 			const variables = {
 				meetupID: meetupId,
@@ -433,11 +433,20 @@
 		}
 
 		function startConnection() {
+			// if (!socket || socket.readyState === WebSocket.CLOSED) {
+			// 	// Open the WebSocket connection when the button is clicked
+			// 	socket = new WebSocket(
+			// 		'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
+			// 	);
+
+			const baseHost = window.location.hostname.includes('localhost')
+				? 'ws://localhost:8080'
+				: 'wss://' + window.location.host;
+
+			const wsUrl = `${baseHost}/subscriptions?meetupID={{ .Meetup.ID }}`;
+
 			if (!socket || socket.readyState === WebSocket.CLOSED) {
-				// Open the WebSocket connection when the button is clicked
-				socket = new WebSocket(
-					'ws://localhost:8080/subscriptions?meetupID={{ .Meetup.ID }}'
-				);
+				socket = new WebSocket(wsUrl);
 
 				socket.onmessage = function (event) {
 					try {
@@ -481,10 +490,10 @@
 			const meetupId = '{{ .Meetup.ID }}'; // from your Go template
 
 			const query = `
-		  				  mutation CloseMeetup($meetupID: ID!) {
-		  				    closeMeetup(meetupID: $meetupID)
-		  				  }
-		  				`;
+			  				  mutation CloseMeetup($meetupID: ID!) {
+			  				    closeMeetup(meetupID: $meetupID)
+			  				  }
+			  				`;
 
 			const variables = {
 				meetupID: meetupId,
@@ -532,13 +541,13 @@
 			const meetupId = '{{ .Meetup.ID }}';
 
 			const query = `
-								  mutation RemoveUser($input: InviteUserInput!, $loginUserID: ID!) {
-								    removeUser(input: $input, loginUserID: $loginUserID) {
-								      id
-								      username
-								    }
-								  }
-								`;
+									  mutation RemoveUser($input: InviteUserInput!, $loginUserID: ID!) {
+									    removeUser(input: $input, loginUserID: $loginUserID) {
+									      id
+									      username
+									    }
+									  }
+									`;
 
 			const variables = {
 				input: {
@@ -583,16 +592,16 @@
 			const meetupId = '{{ .Meetup.ID }}';
 
 			const query = `
-						query GetInvitedUsers($meetupID: ID!) {
-								getMeetupUsersInvited(meetupID: $meetupID) {
-									id
-									username
-									email
-									firstName
-									lastName
+							query GetInvitedUsers($meetupID: ID!) {
+									getMeetupUsersInvited(meetupID: $meetupID) {
+										id
+										username
+										email
+										firstName
+										lastName
+									}
 								}
-							}
-						`;
+							`;
 
 			const variables = { meetupID: meetupId };
 
@@ -633,14 +642,14 @@
 			const description = document.getElementById('edit-description').value;
 
 			const query = `
-						mutation UpdateMeetup($id: ID!, $input: UpdateMeetup!) {
-							updateMeetup(id: $id, input: $input) {
-								id
-								name
-								description
+							mutation UpdateMeetup($id: ID!, $input: UpdateMeetup!) {
+								updateMeetup(id: $id, input: $input) {
+									id
+									name
+									description
+								}
 							}
-						}
-					`;
+						`;
 
 			const variables = {
 				id: meetupId,

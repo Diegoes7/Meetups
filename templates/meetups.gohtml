@@ -1,10 +1,11 @@
 {{ define "meetups" }}
 <script type="module">
 	import { fetchInvitedUsers } from '/templates/static/meetup.js';
+	import { BASE_URL } from '/templates/static/utils.js';
 
 	async function fetchData() {
 		try {
-			const response = await fetch('http://localhost:8080/query', {
+			const response = await fetch(`${BASE_URL}/query`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -35,8 +36,8 @@
 					'users'
 				).innerHTML = `<h3 style="padding-top: 1em;">No coworkers register yet.</h3>`;
 			}
-			
-			if (!data.data ||!data.data.meetups) {
+
+			if (!data.data || !data.data.meetups) {
 				document.getElementById(
 					'meetups'
 				).innerHTML = `<h3>No meetups created yet.</h3>`;
@@ -50,7 +51,6 @@
 			);
 
 			let meetupsHTML = '';
-
 
 			for (let i = 0; i < meetups.length; i++) {
 				const meetup = meetups[i];
@@ -113,7 +113,7 @@
 		}
 
 		try {
-			const response = await fetch('http://localhost:8080/query', {
+			const response = await fetch(`${BASE_URL}/query`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
